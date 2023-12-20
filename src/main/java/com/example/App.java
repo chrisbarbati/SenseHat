@@ -19,7 +19,7 @@ public class App
 
 		//System.out.println(getTempFromHumidity());
 
-		System.out.println(getPressureMbar());
+		//System.out.println(getPressureMbar());
 		
     }
 
@@ -33,6 +33,11 @@ public class App
 		I2C tempI2C = getI2C("TEMPFROMPRESSURE", pressureAddress);
 		
 		try  {
+
+			tempI2C.writeRegister(0x20, 0xc4);
+			tempI2C.writeRegister(0x10, 0x05);
+			tempI2C.writeRegister(0x2E, 0xc0);
+			tempI2C.writeRegister(0x23, 0x40);
 
 			int temperatureLow = tempI2C.readRegister(0x2B);
 			
