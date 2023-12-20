@@ -6,26 +6,35 @@ import com.pi4j.io.i2c.I2C;
 import com.pi4j.io.i2c.I2CConfig;
 import com.pi4j.io.i2c.I2CProvider;
 
+/**
+ * Christian Barbati - Dec 2023
+ * 
+ * Class to add methods that make it easier to interact with
+ * the Raspberry Pi Sense Hat
+ */
+
 public class App 
 {
-
+	/**
+	 * Static variables representing the hex addresses of 
+	 */
 	static final int pressureAddress = 0x5c;
 	static final int humidityAddress = 0x5f;
 
     public static void main( String[] args )
     {
 
-		System.out.println(getTempFromPressure());
+		System.out.println("Current Temperature (C): " + getTempFromPressure());
 
 		//System.out.println(getTempFromHumidity());
 
-		//System.out.println(getPressureMbar());
+		System.out.println("Current Pressure (mbar): " + getPressureMbar());
 		
     }
 
 	/**
 	 * Returns a double representing the current temperature reading in degrees Celsius, as read by the LPS25H pressure sensor
-	 * 
+	 * @return 
 	 */
 	public static double getTempFromPressure(){
 		double temperature = 0;
@@ -34,48 +43,39 @@ public class App
 		
 		try  {
 
-			tempI2C.writeRegister(0x20, 0xc4);
-			tempI2C.writeRegister(0x10, 0x05);
-			tempI2C.writeRegister(0x2E, 0xc0);
-			tempI2C.writeRegister(0x23, 0x40);
-
-			int temperatureLow = tempI2C.readRegister(0x2B);
-			
-			System.out.println("T LOW: " + temperatureLow);
-
-			int temperatureHigh = tempI2C.readRegister(0x2C);
-			
-			System.out.println("T HIGH: " + temperatureHigh);
-
-			String tempStringHigh = Integer.toBinaryString(temperatureHigh);
-
-			String tempStringLow = Integer.toBinaryString(temperatureLow);
-			
-			while(tempStringHigh.length() < 8){
-				tempStringHigh = '0' + tempStringHigh;
+			if(!initializeLPS25H(tempI2C)){
+				//Add proper exception-handling here later
+				System.out.println("Error initializing LPS25H");
 			}
 
-			while(tempStringLow.length() < 8){
-				tempStringLow = '0' + tempStringLow;
-			}
+			//Get the temperature readings from the registers and store them as Strings
+			String tempStringHigh = Integer.toBinaryString(tempI2C.readRegister(0x2C));
+			String tempStringLow = Integer.toBinaryString(tempI2C.readRegister(0x2B));
+			
+			//The readings from the registers represent 8 bit values. Add zeroes to the left hand side until the values are 8 bits
+			tempStringHigh = fillEightBit(tempStringHigh);
+			tempStringLow = fillEightBit(tempStringLow);
 
+			//Concatenate the two strings to get the 16 bit value for the temperature
 			String tempString = tempStringHigh + tempStringLow;
 
-			System.out.println(tempString);
+			double cycles;
 
-			int cycles;
-			
+			/**
+			 * If the leading bit is a zero, convert from twos-complement. 
+			 * 
+			 * Otherwise simply convert to an integer
+			 * 
+			 * (Cycles is the nomenclature in LPS25H docs, so I am keeping it consistent here)
+			 */
 			if(tempString.charAt(0) == '1'){
 				cycles = fromTwosComplement(tempString);
 			}else{
 				cycles = Integer.parseInt(tempString, 2); 
 			}
 
-			System.out.println(cycles);
-
+			//Temperature offset is cycles/480, relative to a base number of 42.5 degrees Celsius
 			temperature = 42.5 + (cycles/480);
-
-			//System.out.println(temp);
 		} catch (Exception e){
 			System.out.println(e);
 		}
@@ -85,14 +85,45 @@ public class App
 	}
 
 	/**
+	 * Initializes the appropriate registers on the LPS25H 
+	 * to enable reading temperature.
+	 * @param tempI2C
+	 * @return
+	 */
+	public static boolean initializeLPS25H(I2C tempI2C){
+			try{
+				//Set CTRL_REG1. Enable output, set data rate to 25Hz, don't update output registers until MSB and LSB update
+				tempI2C.writeRegister(0x20, 0xc4); 
+				//Set RES_CONF. Set temp internal avereage to 16, pressure internal average to 32
+				tempI2C.writeRegister(0x10, 0x05);
+				//Set FIFO_CTRL. Set FIFO to generate a running average filtered pressure
+				tempI2C.writeRegister(0x2E, 0xc0);
+				//Set CTRL_REG4. Unclear what this does in RTIMU, doing it here until I can test.
+				tempI2C.writeRegister(0x23, 0x40);
+
+				return true;
+			} catch (Exception e){
+				System.out.println(e);
+				return false;
+			}
+
+
+	}
+
+	/**
 	 * Returns a double representing the current pressure in mbar, as read by the LPS25H pressure sensor
-	 * 
+	 * @return
 	 */
 	public static double getPressureMbar(){
 		double temperature = 0;
 
 		I2C tempI2C = getI2C("TEMPFROMPRESSURE", pressureAddress);
 		
+		if(!initializeLPS25H(tempI2C)){
+			//Add proper exception-handling here later
+			System.out.println("Error initializing LPS25H");
+		}
+
 		try  {
 
 			int pressureH = tempI2C.readRegister(0x2A);
@@ -125,7 +156,7 @@ public class App
 
 			String tempString = pressureHigh + pressureLow + pressureExtraLow;
 
-			System.out.println(tempString);
+			//System.out.println(tempString);
 
 			int cycles;
 			
@@ -135,7 +166,7 @@ public class App
 				cycles = Integer.parseInt(tempString, 2); 
 			}
 
-			System.out.println(cycles);
+			//System.out.println(cycles);
 
 			temperature = (cycles/4096);
 
@@ -247,10 +278,17 @@ public class App
 
 		converted = Integer.parseInt(twos, 2);
 
-		System.out.println(twos);
+		//System.out.println(twos);
 
 		converted = converted * -1;
 
 		return converted;
+	}
+
+	static public String fillEightBit(String eightBit){
+		while(eightBit.length() < 8){
+			eightBit = '0' + eightBit;
+		}
+		return eightBit;
 	}
 }
