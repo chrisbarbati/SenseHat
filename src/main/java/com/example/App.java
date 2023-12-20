@@ -158,7 +158,7 @@ public class App
 
 			//System.out.println(tempString);
 
-			int cycles;
+			double cycles;
 			
 			if(tempString.charAt(0) == '1'){
 				cycles = fromTwosComplement(tempString);
