@@ -16,21 +16,37 @@ import com.pi4j.io.i2c.I2CProvider;
 public class App 
 {
 	/**
-	 * Static variables representing the hex addresses of 
+	 * I2C _addresses of the various chips on the Sense HAT
 	 */
-	static final int pressureAddress = 0x5c;
-	static final int humidityAddress = 0x5f;
+	static final int LPS25H_ADDRESS = 0x5c; //Pressure (temp)
+	static final int HTS221_ADDRESS = 0x5f; //Humidity (temp)
+	static final int LSM9DS1_ADDRESS = 0x1c; //Accelerometer. Docs also show 0x6a, test later
+	static final int LED2472G_ADDRESS = 0x46; //ATTiny88 (LEDs, joystick, colour sensor(?))
+
+	/**
+	 * I2C registers where data is read from the chips
+	 */
+	static final int LPS25H_TEMP_OUT_H_REGISTER = 0x2c;
+	static final int LPS25H_TEMP_OUT_L_REGISTER = 0x2b;
+
+	static final int LPS25H_PRESS_OUT_H_REGISTER = 0x2A;
+	static final int LPS25H_PRESS_OUT_L_REGISTER = 0x29;
+	static final int LPS25H_PRESS_OUT_XL_REGISTER = 0x28;
+
+
 
     public static void main( String[] args )
     {
 
 		System.out.println("Current Temperature (C): " + getTempFromPressure());
+		//System.out.println("Current Pressure (mbar): " + getPressureMbar());
 
-		//System.out.println(getTempFromHumidity());
+		System.out.println("Current Temperature (C) from humidity: " + getTempFromHumidity());
 
-		System.out.println("Current Pressure (mbar): " + getPressureMbar());
+		//System.out.println("Current Pressure (PSI): " + getPressurePSI());
 		
     }
+
 
 	/**
 	 * Returns a double representing the current temperature reading in degrees Celsius, as read by the LPS25H pressure sensor
@@ -39,7 +55,7 @@ public class App
 	public static double getTempFromPressure(){
 		double temperature = 0;
 
-		I2C tempI2C = getI2C("TEMPFROMPRESSURE", pressureAddress);
+		I2C tempI2C = getI2C("TEMPFROMPRESSURE", LPS25H_ADDRESS);
 		
 		try  {
 
@@ -49,8 +65,8 @@ public class App
 			}
 
 			//Get the temperature readings from the registers and store them as Strings
-			String tempStringHigh = Integer.toBinaryString(tempI2C.readRegister(0x2C));
-			String tempStringLow = Integer.toBinaryString(tempI2C.readRegister(0x2B));
+			String tempStringHigh = Integer.toBinaryString(tempI2C.readRegister(LPS25H_TEMP_OUT_H_REGISTER));
+			String tempStringLow = Integer.toBinaryString(tempI2C.readRegister(LPS25H_TEMP_OUT_L_REGISTER));
 			
 			//The readings from the registers represent 8 bit values. Add zeroes to the left hand side until the values are 8 bits
 			tempStringHigh = fillEightBit(tempStringHigh);
@@ -86,7 +102,7 @@ public class App
 
 	/**
 	 * Initializes the appropriate registers on the LPS25H 
-	 * to enable reading temperature.
+	 * to enable reading temperature / pressure.
 	 * @param tempI2C
 	 * @return
 	 */
@@ -111,48 +127,32 @@ public class App
 	}
 
 	/**
-	 * Returns a double representing the current pressure in mbar, as read by the LPS25H pressure sensor
+	 * Returns a double representing the current pressure in millibar, as read by the LPS25H pressure sensor
 	 * @return
 	 */
 	public static double getPressureMbar(){
-		double temperature = 0;
+		double pressure = 0;
 
-		I2C tempI2C = getI2C("TEMPFROMPRESSURE", pressureAddress);
+		I2C pressureI2C = getI2C("PRESSURE", LPS25H_ADDRESS);
 		
-		if(!initializeLPS25H(tempI2C)){
+		if(!initializeLPS25H(pressureI2C)){
 			//Add proper exception-handling here later
 			System.out.println("Error initializing LPS25H");
 		}
 
 		try  {
 
-			int pressureH = tempI2C.readRegister(0x2A);
+			int pressureH = pressureI2C.readRegister(LPS25H_PRESS_OUT_H_REGISTER);
+			int pressureL = pressureI2C.readRegister(LPS25H_PRESS_OUT_L_REGISTER);
+			int pressureXL = pressureI2C.readRegister(LPS25H_PRESS_OUT_XL_REGISTER);
 			
-
-			int pressureL = tempI2C.readRegister(0x29);
-			
-
-			int pressureXL = tempI2C.readRegister(0x28);
-			
-
 			String pressureHigh = Integer.toBinaryString(pressureH);
-
 			String pressureLow = Integer.toBinaryString(pressureL);
-
 			String pressureExtraLow = Integer.toBinaryString(pressureXL);
-
 			
-			while(pressureHigh.length() < 8){
-				pressureHigh = '0' + pressureHigh;
-			}
-
-			while(pressureLow.length() < 8){
-				pressureLow = '0' + pressureLow;
-			}
-
-			while(pressureExtraLow.length() < 8){
-				pressureExtraLow = '0' + pressureExtraLow;
-			}
+			pressureHigh = fillEightBit(pressureHigh);
+			pressureLow = fillEightBit(pressureLow);
+			pressureExtraLow = fillEightBit(pressureExtraLow);
 
 			String tempString = pressureHigh + pressureLow + pressureExtraLow;
 
@@ -168,7 +168,7 @@ public class App
 
 			//System.out.println(cycles);
 
-			temperature = (cycles/4096);
+			pressure = (cycles/4096);
 
 			//System.out.println(temp);
 		} catch (Exception e){
@@ -176,7 +176,15 @@ public class App
 		}
 		
 
-		return temperature;
+		return pressure;
+	}
+
+	/**
+	 * Returns a double representing the current pressure in PSI, as read by the LPS25H pressure sensor
+	 * @return
+	 */
+	public static double getPressurePSI(){
+		return getPressureMbar() / 68.948;
 	}
 
 	/**
@@ -184,47 +192,134 @@ public class App
 	 * 
 	 */
 	public static double getTempFromHumidity(){
-		double temperature = 0;
-
-		I2C tempI2C = getI2C("TEMPFROMPRESSURE", humidityAddress);
+		double temp = 0;
+		I2C tempI2C = getI2C("TEMPFROMHUMIDITY", HTS221_ADDRESS
+);
 		
 		try  {
 
-			int temperature1 = tempI2C.readRegister(0x2A);
-			
-			System.out.println("T LOW: " + temperature1);
+			//Initialization
+			tempI2C.writeRegister(0x20, 0x84);
 
-			int temperature2 = tempI2C.readRegister(0x2B);
-			
-			System.out.println("T HIGH: " + temperature2);
+			tempI2C.writeRegister(0x21, 0x01);
 
-			String tempStringHigh = Integer.toBinaryString(temperature2);
 
-			String tempStringLow = Integer.toBinaryString(temperature1);
-			
-			while(tempStringHigh.length() < 8){
-				tempStringHigh = '0' + tempStringHigh;
+			/**
+			 * Temperature readings are found by combining the following:
+			 * MSB T0_degC T0_degC, 0x35 bit 3, 2 concatenated to 0x32
+			 * 
+			 * MSB T1_degC T1_degC, 0x35 bit 1, 0 concatenated to 0x33
+			 * 
+			 */
+
+			int msb = tempI2C.readRegister(0x35);
+			String msbString = Integer.toBinaryString(msb);
+			//System.out.println("msbstring: " + msbString);
+
+			System.out.println("msb" + msbString);
+
+			while(msbString.length() < 8){
+				msbString = "0" + msbString;
 			}
 
-			while(tempStringLow.length() < 8){
-				tempStringLow = '0' + tempStringLow;
-			}
+			String msbT0 = msbString.substring(7, 8);
+			String msbT1 = msbString.substring(5, 6);
 
-			String tempString = tempStringHigh + tempStringLow;
-
-			System.out.println(tempString);
-
-			int cycles;
+			int t0Cal = tempI2C.readRegister(0x32);
 			
-			if(tempString.charAt(0) == '1'){
-				cycles = fromTwosComplement(tempString);
+			//System.out.println("T0Cal: " + t0Cal);
+
+			int t1Cal = tempI2C.readRegister(0x33);
+			
+			//System.out.println("T1Cal: " + t1Cal);
+
+			String t1CalString = Integer.toBinaryString(t1Cal);
+
+			String t0CalString = Integer.toBinaryString(t0Cal);
+			
+			t0CalString = msbT0 + fillEightBit(t0CalString);
+			System.out.println(t0CalString);
+			t1CalString = msbT1 + fillEightBit(t1CalString);
+			System.out.println(t1CalString);
+
+			//System.out.println(tempString);
+
+			double t0CalDouble = Integer.parseInt(t0CalString, 2);
+			double t1CalDouble = Integer.parseInt(t1CalString, 2);
+
+			int t0High = tempI2C.readRegister(0x3D);
+			int t0Low = tempI2C.readRegister(0x3C);
+			int t1High = tempI2C.readRegister(0x3F);
+			int t1Low = tempI2C.readRegister(0x3E);
+
+			String t0HighString = Integer.toBinaryString(t0High);
+			String t0LowString = Integer.toBinaryString(t0Low);
+			String t1HighString = Integer.toBinaryString(t1High);
+			String t1LowString = Integer.toBinaryString(t1Low);
+
+			t0HighString = fillEightBit(t0HighString);
+			t0LowString = fillEightBit(t0LowString);
+			t1HighString = fillEightBit(t1HighString);
+			t1LowString = fillEightBit(t1LowString);
+
+			String t0String = t0HighString + t0LowString;
+			String t1String = t1HighString + t1LowString;
+
+			int t0 = 0;
+
+			if(t0String.charAt(0) == '1'){
+				t0 = fromTwosComplement(t0String);
 			}else{
-				cycles = Integer.parseInt(tempString, 2); 
+				t0 = Integer.parseInt(t0String, 2); 
 			}
 
-			System.out.println(cycles);
+			int t1 = 0;
 
-			temperature = 42.5 + (cycles/480);
+			if(t1String.charAt(0) == '1'){
+				t1 = fromTwosComplement(t1String);
+			}else{
+				t1 = Integer.parseInt(t1String, 2); 
+			}
+
+			t0CalDouble = t0CalDouble / 8;
+			t1CalDouble = t1CalDouble / 8;
+
+			System.out.println("t0 full " + t0);
+			System.out.println("t1 full " + t1);
+
+			System.out.println(t0CalDouble);
+			System.out.println(t1CalDouble);
+
+			Double slope = (t1CalDouble - t0CalDouble) / (t1 - t0);
+
+			Double b = t1CalDouble - (slope * t1);
+
+			System.out.println("Equation: y = " + slope + "x + " + b);
+			
+			int tOutHigh = tempI2C.readRegister(0x2B);
+			int tOutLow = tempI2C.readRegister(0x2A);
+
+			String tOutHighString = Integer.toBinaryString(tOutHigh);
+			String tOutLowString = Integer.toBinaryString(tOutLow);
+
+			tOutHighString = fillEightBit(tOutHighString);
+			tOutLowString = fillEightBit(tOutLowString);
+
+			String tOut = tOutHighString + tOutLowString;
+
+			System.out.println("tout " + tOut);
+
+			int tOutInt = 0;
+
+			if(tOut.charAt(0) == '1'){
+				tOutInt = fromTwosComplement(tOut);
+			}else{
+				tOutInt = Integer.parseInt(tOut, 2); 
+			}
+
+			System.out.println("tout int " + tOutInt);
+
+			temp = (slope * tOutInt) + b;
 
 			//System.out.println(temp);
 		} catch (Exception e){
@@ -232,15 +327,15 @@ public class App
 		}
 		
 
-		return temperature;
+		return temp;
 	}
 
-	public static I2C getI2C(String id, int address){
+	public static I2C getI2C(String id, int _ADDRESS){
 		I2C i2c;
 
 		Context pi4j = Pi4J.newAutoContext();
 		I2CProvider i2CProvider = pi4j.provider("linuxfs-i2c");
-		I2CConfig i2cConfig = I2C.newConfigBuilder(pi4j).id(id).bus(1).device(address).build();
+		I2CConfig i2cConfig = I2C.newConfigBuilder(pi4j).id(id).bus(1).device(_ADDRESS).build();
 		i2c = i2CProvider.create(i2cConfig);
 
 		return i2c;
