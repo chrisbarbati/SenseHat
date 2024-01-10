@@ -13,7 +13,7 @@ import com.pi4j.io.i2c.I2CProvider;
  * the Raspberry Pi Sense Hat
  */
 
-public class App 
+public class SenseHATI2C 
 {
 	/**
 	 * I2C _addresses of the various chips on the Sense HAT
@@ -32,21 +32,6 @@ public class App
 	static final int LPS25H_PRESS_OUT_H_REGISTER = 0x2A;
 	static final int LPS25H_PRESS_OUT_L_REGISTER = 0x29;
 	static final int LPS25H_PRESS_OUT_XL_REGISTER = 0x28;
-
-
-
-    public static void main( String[] args )
-    {
-
-		System.out.println("Current Temperature (C): " + getTempFromPressure());
-		//System.out.println("Current Pressure (mbar): " + getPressureMbar());
-
-		System.out.println("Current Temperature (C) from humidity: " + getTempFromHumidity());
-
-		//System.out.println("Current Pressure (PSI): " + getPressurePSI());
-		
-    }
-
 
 	/**
 	 * Returns a double representing the current temperature reading in degrees Celsius, as read by the LPS25H pressure sensor
@@ -156,8 +141,6 @@ public class App
 
 			String tempString = pressureHigh + pressureLow + pressureExtraLow;
 
-			//System.out.println(tempString);
-
 			double cycles;
 			
 			if(tempString.charAt(0) == '1'){
@@ -166,11 +149,7 @@ public class App
 				cycles = Integer.parseInt(tempString, 2); 
 			}
 
-			//System.out.println(cycles);
-
 			pressure = (cycles/4096);
-
-			//System.out.println(temp);
 		} catch (Exception e){
 			System.out.println(e);
 		}
@@ -214,7 +193,6 @@ public class App
 
 			int msb = tempI2C.readRegister(0x35);
 			String msbString = Integer.toBinaryString(msb);
-			//System.out.println("msbstring: " + msbString);
 
 			System.out.println("msb" + msbString);
 
@@ -226,23 +204,13 @@ public class App
 			String msbT1 = msbString.substring(5, 6);
 
 			int t0Cal = tempI2C.readRegister(0x32);
-			
-			//System.out.println("T0Cal: " + t0Cal);
-
 			int t1Cal = tempI2C.readRegister(0x33);
-			
-			//System.out.println("T1Cal: " + t1Cal);
 
 			String t1CalString = Integer.toBinaryString(t1Cal);
-
 			String t0CalString = Integer.toBinaryString(t0Cal);
 			
 			t0CalString = msbT0 + fillEightBit(t0CalString);
-			System.out.println(t0CalString);
 			t1CalString = msbT1 + fillEightBit(t1CalString);
-			System.out.println(t1CalString);
-
-			//System.out.println(tempString);
 
 			double t0CalDouble = Integer.parseInt(t0CalString, 2);
 			double t1CalDouble = Integer.parseInt(t1CalString, 2);
@@ -284,17 +252,9 @@ public class App
 			t0CalDouble = t0CalDouble / 8;
 			t1CalDouble = t1CalDouble / 8;
 
-			System.out.println("t0 full " + t0);
-			System.out.println("t1 full " + t1);
-
-			System.out.println(t0CalDouble);
-			System.out.println(t1CalDouble);
-
 			Double slope = (t1CalDouble - t0CalDouble) / (t1 - t0);
 
 			Double b = t1CalDouble - (slope * t1);
-
-			System.out.println("Equation: y = " + slope + "x + " + b);
 			
 			int tOutHigh = tempI2C.readRegister(0x2B);
 			int tOutLow = tempI2C.readRegister(0x2A);
@@ -307,8 +267,6 @@ public class App
 
 			String tOut = tOutHighString + tOutLowString;
 
-			System.out.println("tout " + tOut);
-
 			int tOutInt = 0;
 
 			if(tOut.charAt(0) == '1'){
@@ -317,16 +275,11 @@ public class App
 				tOutInt = Integer.parseInt(tOut, 2); 
 			}
 
-			System.out.println("tout int " + tOutInt);
-
 			temp = (slope * tOutInt) + b;
-
-			//System.out.println(temp);
 		} catch (Exception e){
 			System.out.println(e);
 		}
 		
-
 		return temp;
 	}
 
@@ -372,8 +325,6 @@ public class App
         twos = builder.toString();
 
 		converted = Integer.parseInt(twos, 2);
-
-		//System.out.println(twos);
 
 		converted = converted * -1;
 
