@@ -64,8 +64,10 @@ public class SenseHATI2C
             byte tempHigh = tempI2C.readRegisterByte(LPS25H_TEMP_OUT_H_REGISTER);
             byte tempLow = tempI2C.readRegisterByte(LPS25H_TEMP_OUT_L_REGISTER);
 
-            //Concatenate the two bytes and store as short
-            short tempFull = (short)((tempHigh << 8) | tempLow);
+            /*
+            * Concatenate the two bytes and store as short
+            */
+            short tempFull = (short)((tempHigh << 8) | (tempLow & 0xFF));
 
             double cycles = (double)tempFull;
 
