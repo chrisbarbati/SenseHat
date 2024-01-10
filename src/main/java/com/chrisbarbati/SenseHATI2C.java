@@ -167,7 +167,7 @@ public class SenseHATI2C
         return getPressureMbar() / 68.948;
     }
 
-    public static double getTemperatureAveraged(){
+    public static double getTempAveraged(){
         return (getTempFromPressure() + getTempFromHumidity()) / 2;
     }
 
