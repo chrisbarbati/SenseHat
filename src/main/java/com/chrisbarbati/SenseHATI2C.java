@@ -33,6 +33,13 @@ public class SenseHATI2C
     static final int LPS25H_PRESS_OUT_L_REGISTER = 0x29;
     static final int LPS25H_PRESS_OUT_XL_REGISTER = 0x28;
 
+    public static void main(String[] args) {
+        System.out.println("Temp from pressure: " + getTempFromPressure());
+        System.out.println("Temp from humidity: " + getTempFromHumidity());
+        System.out.println("Relative Humidity: " + getHumidity());
+        System.out.println("Atmospheric Pressure: " + getPressureMbar());
+    }
+
     /**
      * Returns a double representing the current temperature reading in degrees Celsius, as read by the LPS25H pressure sensor
      * @return
@@ -49,38 +56,24 @@ public class SenseHATI2C
                 System.out.println("Error initializing LPS25H");
             }
 
-            //Get the temperature readings from the registers and store them as Strings
-            String tempStringHigh = Integer.toBinaryString(tempI2C.readRegister(LPS25H_TEMP_OUT_H_REGISTER));
-            String tempStringLow = Integer.toBinaryString(tempI2C.readRegister(LPS25H_TEMP_OUT_L_REGISTER));
-
-            //The readings from the registers represent 8 bit values. Add zeroes to the left hand side until the values are 8 bits
-            tempStringHigh = fillEightBit(tempStringHigh);
-            tempStringLow = fillEightBit(tempStringLow);
-
-            //Concatenate the two strings to get the 16 bit value for the temperature
-            String tempString = tempStringHigh + tempStringLow;
-
-            double cycles;
-
             /**
-             * If the leading bit is a zero, convert from twos-complement.
-             *
-             * Otherwise simply convert to an integer
-             *
-             * (Cycles is the nomenclature in LPS25H docs, so I am keeping it consistent here)
+             * Get the high and low portions of the temperature value from the appropriate registers
+             * 
+             * tempHigh represents the leftmost 8 bits of the value, and tempLow represents the rightmost 8 bits
              */
-            if(tempString.charAt(0) == '1'){
-                cycles = fromTwosComplement(tempString);
-            }else{
-                cycles = Integer.parseInt(tempString, 2);
-            }
+            byte tempHigh = tempI2C.readRegisterByte(LPS25H_TEMP_OUT_H_REGISTER);
+            byte tempLow = tempI2C.readRegisterByte(LPS25H_TEMP_OUT_L_REGISTER);
+
+            //Concatenate the two bytes and store as short
+            short tempFull = (short)((tempHigh << 8) | tempLow);
+
+            double cycles = (double)tempFull;
 
             //Temperature offset is cycles/480, relative to a base number of 42.5 degrees Celsius
             temperature = 42.5 + (cycles/480);
         } catch (Exception e){
             System.out.println(e);
         }
-
 
         return temperature;
     }
@@ -131,22 +124,21 @@ public class SenseHATI2C
             int pressureL = pressureI2C.readRegister(LPS25H_PRESS_OUT_L_REGISTER);
             int pressureXL = pressureI2C.readRegister(LPS25H_PRESS_OUT_XL_REGISTER);
 
-            String pressureHigh = Integer.toBinaryString(pressureH);
-            String pressureLow = Integer.toBinaryString(pressureL);
-            String pressureExtraLow = Integer.toBinaryString(pressureXL);
+            /**
+             * Concatenate the three 8-bit values to create a signed 24-bit value, and store as a String
+             * The additional format / replace is due to Java not having an explicit 24-bit type. Will need to look for a
+             * better way to handle this
+            */
 
-            pressureHigh = fillEightBit(pressureHigh);
-            pressureLow = fillEightBit(pressureLow);
-            pressureExtraLow = fillEightBit(pressureExtraLow);
-
-            String tempString = pressureHigh + pressureLow + pressureExtraLow;
+            //TODO: Review documentation and return to this code
+            String pressureString = String.format("%24s", Integer.toBinaryString((pressureH << 16) | (pressureL << 8) | pressureXL)).replace(' ', '0');
 
             double cycles;
 
-            if(tempString.charAt(0) == '1'){
-                cycles = fromTwosComplement(tempString);
+            if(pressureString.charAt(0) == '1'){
+                cycles = fromTwosComplement(pressureString);
             }else{
-                cycles = Integer.parseInt(tempString, 2);
+                cycles = Integer.parseInt(pressureString, 2);
             }
 
             pressure = (cycles/4096);
@@ -198,6 +190,7 @@ public class SenseHATI2C
              *
              * MSB T1_degC T1_degC, 0x35 bit 1, 0 concatenated to 0x33
              *
+             * MSB at 0x35 is a an 8-bit value (only 4 rightmost bits significant), so we need to retrieve it and split
              */
 
             int msb = tempI2C.readRegister(0x35);
