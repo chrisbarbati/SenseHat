@@ -317,40 +317,17 @@ public class SenseHATI2C
              */
 
             //H0 and H1 are stored in two separate registers each, as a signed 16 bit value.
-            int h0High = humI2C.readRegister(0x37);
-            int h0Low = humI2C.readRegister(0x36);
-            int h1High = humI2C.readRegister(0x3B);
-            int h1Low = humI2C.readRegister(0x3A);
+            byte h0High = humI2C.readRegisterByte(0x37);
+            byte h0Low = humI2C.readRegisterByte(0x36);
+            byte h1High = humI2C.readRegisterByte(0x3B);
+            byte h1Low = humI2C.readRegisterByte(0x3A);
 
-            String h0HighString = Integer.toBinaryString(h0High);
-            String h0LowString = Integer.toBinaryString(h0Low);
-            String h1HighString = Integer.toBinaryString(h1High);
-            String h1LowString = Integer.toBinaryString(h1Low);
+            //Concatenate to short values
+            short h0Full = (short)((h0High << 8 ) | (h0Low & 0xFF));
+            short h1Full = (short)((h1High << 8 ) | (h1Low & 0xFF));
 
-            h0HighString = fillEightBit(h0HighString);
-            h0LowString = fillEightBit(h0LowString);
-            h1HighString = fillEightBit(h1HighString);
-            h1LowString = fillEightBit(h1LowString);
-
-            //Concatenate to obtain our 16 bit values for h0 and h1
-            String h0String = h0HighString + h0LowString;
-            String h1String = h1HighString + h1LowString;
-
-            int h0 = 0;
-
-            if(h0String.charAt(0) == '1'){
-                h0 = fromTwosComplement(h0String);
-            }else{
-                h0 = Integer.parseInt(h0String, 2);
-            }
-
-            int h1 = 0;
-
-            if(h1String.charAt(0) == '1'){
-                h1 = fromTwosComplement(h1String);
-            }else{
-                h1 = Integer.parseInt(h1String, 2);
-            }
+            double h0 = (double)h0Full;
+            double h1 = (double)h1Full;
 
             /**
              * Now that we have two points, we can calculate the slope
@@ -368,31 +345,17 @@ public class SenseHATI2C
              * The value in HOUT represents the independent variable for the above line equation.
              * It is represented by a signed 16-bit value.
              */
-            int hOutHigh = humI2C.readRegister(0x29);
-            int hOutLow = humI2C.readRegister(0x28);
+            byte hOutHigh = humI2C.readRegisterByte(0x29);
+            byte hOutLow = humI2C.readRegisterByte(0x28);
 
-            String hOutHighString = Integer.toBinaryString(hOutHigh);
-            String hOutLowString = Integer.toBinaryString(hOutLow);
-
-            hOutHighString = fillEightBit(hOutHighString);
-            hOutLowString = fillEightBit(hOutLowString);
-
-            String hOut = hOutHighString + hOutLowString;
-
-            int hOutInt = 0;
-
-            if(hOut.charAt(0) == '1'){
-                hOutInt = fromTwosComplement(hOut);
-            }else{
-                hOutInt = Integer.parseInt(hOut, 2);
-            }
+            short hOut = (short)((hOutHigh << 8) | (hOutLow & 0xFF));
 
             /**
              * Now that we have the equation for our line, and the independent
              * variable represented by tOut, we can calculate our relative humidity
              * (percent)
              */
-            humidity = (slope * hOutInt) + b;
+            humidity = (slope * hOut) + b;
 
         } catch (Exception e){
             System.out.println(e);
