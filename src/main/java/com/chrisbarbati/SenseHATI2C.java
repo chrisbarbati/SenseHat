@@ -228,83 +228,49 @@ public class SenseHATI2C
              * reading, we also need the x-values, represented by the T0 and T1 values
              */
 
-            //T0 and T1 are stored in two separate registers each, as a signed 16 bit value.
-            int t0High = tempI2C.readRegister(0x3D);
-            int t0Low = tempI2C.readRegister(0x3C);
-            int t1High = tempI2C.readRegister(0x3F);
-            int t1Low = tempI2C.readRegister(0x3E);
+            //T0 and T1 are stored in two separate registers each, as 8-bit values
+            byte t0High = tempI2C.readRegisterByte(0x3D);
+            byte t0Low = tempI2C.readRegisterByte(0x3C);
+            byte t1High = tempI2C.readRegisterByte(0x3F);
+            byte t1Low = tempI2C.readRegisterByte(0x3E);
 
-            String t0HighString = Integer.toBinaryString(t0High);
-            String t0LowString = Integer.toBinaryString(t0Low);
-            String t1HighString = Integer.toBinaryString(t1High);
-            String t1LowString = Integer.toBinaryString(t1Low);
+            /*
+             * t0 and t1 are a each signed 16-bit values, so we need to concatenate them
+             */
+            short t0 = (short)((t0High << 8) | (t0Low & 0xFF));
+            short t1 = (short)((t1High << 8) | (t1Low & 0xFF));
 
-            t0HighString = fillEightBit(t0HighString);
-            t0LowString = fillEightBit(t0LowString);
-            t1HighString = fillEightBit(t1HighString);
-            t1LowString = fillEightBit(t1LowString);
-
-            //Concatenate to obtain our 16 bit values for t0 and t1
-            String t0String = t0HighString + t0LowString;
-            String t1String = t1HighString + t1LowString;
-
-            int t0 = 0;
-
-            if(t0String.charAt(0) == '1'){
-                t0 = fromTwosComplement(t0String);
-            }else{
-                t0 = Integer.parseInt(t0String, 2);
-            }
-
-            int t1 = 0;
-
-            if(t1String.charAt(0) == '1'){
-                t1 = fromTwosComplement(t1String);
-            }else{
-                t1 = Integer.parseInt(t1String, 2);
-            }
+            double t0Double = (double)t0;
+            double t1Double = (double)t1;
 
             /**
              * Now that we have two points, we can calculate the slope
              * by dividing rise by run
              */
-            Double slope = (t1CalDouble - t0CalDouble) / (t1 - t0);
+            Double slope = (t1CalDouble - t0CalDouble) / (t1Double - t0Double);
 
             /**
              * And the y-intercept can be determined by isolating for it
              * in the formula (y = mx + b, b = y - mx)
              */
-            Double b = t1CalDouble - (slope * t1);
+            Double b = t1CalDouble - (slope * t1Double);
 
             /**
              * The value in TOUT represents the independent variable for the above line equation.
              * It is represented by a signed 16-bit value.
              */
-            int tOutHigh = tempI2C.readRegister(0x2B);
-            int tOutLow = tempI2C.readRegister(0x2A);
+            byte tOutHigh = tempI2C.readRegisterByte(0x2B);
+            byte tOutLow = tempI2C.readRegisterByte(0x2A);
 
-            String tOutHighString = Integer.toBinaryString(tOutHigh);
-            String tOutLowString = Integer.toBinaryString(tOutLow);
-
-            tOutHighString = fillEightBit(tOutHighString);
-            tOutLowString = fillEightBit(tOutLowString);
-
-            String tOut = tOutHighString + tOutLowString;
-
-            int tOutInt = 0;
-
-            if(tOut.charAt(0) == '1'){
-                tOutInt = fromTwosComplement(tOut);
-            }else{
-                tOutInt = Integer.parseInt(tOut, 2);
-            }
+            short tOut = (short)((tOutHigh << 8) | (tOutLow & 0xFF));
+            double tOutDouble = (double)tOut;
 
             /**
              * Now that we have the equation for our line, and the independent
              * variable represented by tOut, we can calculate our temperature
              * reading (degrees Celsius)
              */
-            temp = (slope * tOutInt) + b;
+            temp = (slope * tOutDouble) + b;
         } catch (Exception e){
             System.out.println(e);
         }
