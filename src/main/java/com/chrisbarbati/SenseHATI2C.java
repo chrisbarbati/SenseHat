@@ -33,16 +33,10 @@ public class SenseHATI2C
     static final int LPS25H_PRESS_OUT_L_REGISTER = 0x29;
     static final int LPS25H_PRESS_OUT_XL_REGISTER = 0x28;
 
-    public static void main(String[] args) {
-        System.out.println("Temp from pressure: " + getTempFromPressure());
-        System.out.println("Temp from humidity: " + getTempFromHumidity());
-        System.out.println("Relative Humidity: " + getHumidity());
-        System.out.println("Atmospheric Pressure: " + getPressureMbar());
-    }
-
     /**
      * Returns a double representing the current temperature reading in degrees Celsius, as read by the LPS25H pressure sensor
-     * @return
+     * 
+     * @return Current temperature in degrees Celsus, as a double
      */
     public static double getTempFromPressure(){
         double temperature = 0;
@@ -83,8 +77,9 @@ public class SenseHATI2C
     /**
      * Initializes the appropriate registers on the LPS25H
      * to enable reading temperature / pressure.
-     * @param tempI2C
-     * @return
+     * 
+     * @param tempI2C The I2C object to be used to initialize the LPS25H sensor (must have been created with the LPS25H address as it's parameter)
+     * @return True if successful
      */
     public static boolean initializeLPS25H(I2C tempI2C){
         try{
@@ -102,13 +97,12 @@ public class SenseHATI2C
             System.out.println(e);
             return false;
         }
-
-
     }
 
     /**
      * Returns a double representing the current pressure in millibar, as read by the LPS25H pressure sensor
-     * @return
+     * 
+     * @return Current atmospheric pressure in millibar, as double
      */
     public static double getPressureMbar(){
         double pressure = 0;
@@ -149,25 +143,33 @@ public class SenseHATI2C
             System.out.println(e);
         }
 
-
         return pressure;
     }
 
     /**
-     * Returns a double representing the current pressure in PSI, as read by the LPS25H pressure sensor
-     * @return
+     * Returns a double representing the current atmospheric in PSI, as read by the LPS25H pressure sensor
+     * 
+     * @return Current atmospheric pressure in PSI, as double
      */
     public static double getPressurePSI(){
         return getPressureMbar() / 68.948;
     }
 
+    /**
+     * I've noticed that the two temperature readings don't always agree, so I 
+     * have added this function to average the two values.
+     * 
+     * Returns a temperature value averaged from both LPS25H and HTS221 sensors. 
+     * @return
+     */
     public static double getTempAveraged(){
         return (getTempFromPressure() + getTempFromHumidity()) / 2;
     }
 
     /**
      * Returns a double representing the current temperature reading in degrees Celsius, as read by the HTS221 humidity sensor
-     *
+     * 
+     * @return Current temperature in degrees Celsius, as double
      */
     public static double getTempFromHumidity(){
         double temp = 0;
@@ -198,7 +200,7 @@ public class SenseHATI2C
             int msb = tempI2C.readRegister(0x35);
             String msbString = Integer.toBinaryString(msb);
 
-            msbString = fillEightBit(msbString);
+            msbString = fillBits(msbString, 8);
 
             //The MSB has an 8 bit value, but we only need two bits for each calibration value
             String msbT0 = msbString.substring(7, 8);
@@ -211,8 +213,8 @@ public class SenseHATI2C
             String t0CalString = Integer.toBinaryString(t0Cal);
 
             //The calibration values are 10 bits, unsigned. Concatenate the MSBs
-            t0CalString = msbT0 + fillEightBit(t0CalString);
-            t1CalString = msbT1 + fillEightBit(t1CalString);
+            t0CalString = msbT0 + fillBits(t0CalString, 8);
+            t1CalString = msbT1 + fillBits(t1CalString, 8);
 
             /**
              * Convert the values to doubles, and divide by 8 (datasheet indicates that the registers hold a value
@@ -279,6 +281,11 @@ public class SenseHATI2C
         return temp;
     }
 
+    /**
+     * Returns a double representing the current relative humidity (%), as read by the HTS221 humidity sensor
+     * 
+     * @return Current relative humidity (%), as double
+     */
     public static double getHumidity(){
         double humidity = 0;
         I2C humI2C = getI2C("HUMIDITY", HTS221_ADDRESS);
@@ -360,11 +367,16 @@ public class SenseHATI2C
         } catch (Exception e){
             System.out.println(e);
         }
-
-
         return humidity;
     }
 
+    /**
+     * Function to create a new I2C object
+     * 
+     * @param id ID for the new I2C object
+     * @param _ADDRESS I2C address
+     * @return New I2C object
+     */
     public static I2C getI2C(String id, int _ADDRESS){
         I2C i2c;
 
@@ -377,8 +389,10 @@ public class SenseHATI2C
     }
 
     /**
-     * Converts a passed binary string in two's complement to
-     * it's decimal equivalent
+     * Converts a twos-complement binary string into
+     * it's integer equivalent
+     * @param binary Binary string
+     * @return equivalent integer
      */
     public static int fromTwosComplement(String binary){
         int converted = 0;
@@ -413,10 +427,17 @@ public class SenseHATI2C
         return converted;
     }
 
-    static public String fillEightBit(String eightBit){
-        while(eightBit.length() < 8){
-            eightBit = '0' + eightBit;
+    /**
+     * When working with binary strings, this function will
+     * fill the appropriate number of leading zeroes
+     * @param binString Binary input string
+     * @param desiredBits Desired number of bits
+     * @return Input string with leading zeroes added to result in the appropriate number of bits
+     */
+    static public String fillBits(String binString, int desiredBits){
+        while(binString.length() < desiredBits){
+            binString = '0' + binString;
         }
-        return eightBit;
+        return binString;
     }
 }
