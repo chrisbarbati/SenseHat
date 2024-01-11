@@ -35,7 +35,8 @@ public class SenseHATI2C
 
     /**
      * Returns a double representing the current temperature reading in degrees Celsius, as read by the LPS25H pressure sensor
-     * @return
+     * 
+     * @return Current temperature in degrees Celsus, as a double
      */
     public static double getTempFromPressure(){
         double temperature = 0;
@@ -49,31 +50,20 @@ public class SenseHATI2C
                 System.out.println("Error initializing LPS25H");
             }
 
-            //Get the temperature readings from the registers and store them as Strings
-            String tempStringHigh = Integer.toBinaryString(tempI2C.readRegister(LPS25H_TEMP_OUT_H_REGISTER));
-            String tempStringLow = Integer.toBinaryString(tempI2C.readRegister(LPS25H_TEMP_OUT_L_REGISTER));
-
-            //The readings from the registers represent 8 bit values. Add zeroes to the left hand side until the values are 8 bits
-            tempStringHigh = fillEightBit(tempStringHigh);
-            tempStringLow = fillEightBit(tempStringLow);
-
-            //Concatenate the two strings to get the 16 bit value for the temperature
-            String tempString = tempStringHigh + tempStringLow;
-
-            double cycles;
-
             /**
-             * If the leading bit is a zero, convert from twos-complement.
-             *
-             * Otherwise simply convert to an integer
-             *
-             * (Cycles is the nomenclature in LPS25H docs, so I am keeping it consistent here)
+             * Get the high and low portions of the temperature value from the appropriate registers
+             * 
+             * tempHigh represents the leftmost 8 bits of the value, and tempLow represents the rightmost 8 bits
              */
-            if(tempString.charAt(0) == '1'){
-                cycles = fromTwosComplement(tempString);
-            }else{
-                cycles = Integer.parseInt(tempString, 2);
-            }
+            byte tempHigh = tempI2C.readRegisterByte(LPS25H_TEMP_OUT_H_REGISTER);
+            byte tempLow = tempI2C.readRegisterByte(LPS25H_TEMP_OUT_L_REGISTER);
+
+            /*
+            * Concatenate the two bytes and store as short
+            */
+            short tempFull = (short)((tempHigh << 8) | (tempLow & 0xFF));
+
+            double cycles = (double)tempFull;
 
             //Temperature offset is cycles/480, relative to a base number of 42.5 degrees Celsius
             temperature = 42.5 + (cycles/480);
@@ -81,15 +71,15 @@ public class SenseHATI2C
             System.out.println(e);
         }
 
-
         return temperature;
     }
 
     /**
      * Initializes the appropriate registers on the LPS25H
      * to enable reading temperature / pressure.
-     * @param tempI2C
-     * @return
+     * 
+     * @param tempI2C The I2C object to be used to initialize the LPS25H sensor (must have been created with the LPS25H address as it's parameter)
+     * @return True if successful
      */
     public static boolean initializeLPS25H(I2C tempI2C){
         try{
@@ -107,13 +97,12 @@ public class SenseHATI2C
             System.out.println(e);
             return false;
         }
-
-
     }
 
     /**
      * Returns a double representing the current pressure in millibar, as read by the LPS25H pressure sensor
-     * @return
+     * 
+     * @return Current atmospheric pressure in millibar, as double
      */
     public static double getPressureMbar(){
         double pressure = 0;
@@ -131,22 +120,21 @@ public class SenseHATI2C
             int pressureL = pressureI2C.readRegister(LPS25H_PRESS_OUT_L_REGISTER);
             int pressureXL = pressureI2C.readRegister(LPS25H_PRESS_OUT_XL_REGISTER);
 
-            String pressureHigh = Integer.toBinaryString(pressureH);
-            String pressureLow = Integer.toBinaryString(pressureL);
-            String pressureExtraLow = Integer.toBinaryString(pressureXL);
+            /**
+             * Concatenate the three 8-bit values to create a signed 24-bit value, and store as a String
+             * The additional format / replace is due to Java not having an explicit 24-bit type. Will need to look for a
+             * better way to handle this
+            */
 
-            pressureHigh = fillEightBit(pressureHigh);
-            pressureLow = fillEightBit(pressureLow);
-            pressureExtraLow = fillEightBit(pressureExtraLow);
-
-            String tempString = pressureHigh + pressureLow + pressureExtraLow;
+            //TODO: Review documentation and return to this code
+            String pressureString = String.format("%24s", Integer.toBinaryString((pressureH << 16) | (pressureL << 8) | pressureXL)).replace(' ', '0');
 
             double cycles;
 
-            if(tempString.charAt(0) == '1'){
-                cycles = fromTwosComplement(tempString);
+            if(pressureString.charAt(0) == '1'){
+                cycles = fromTwosComplement(pressureString);
             }else{
-                cycles = Integer.parseInt(tempString, 2);
+                cycles = Integer.parseInt(pressureString, 2);
             }
 
             pressure = (cycles/4096);
@@ -155,25 +143,33 @@ public class SenseHATI2C
             System.out.println(e);
         }
 
-
         return pressure;
     }
 
     /**
-     * Returns a double representing the current pressure in PSI, as read by the LPS25H pressure sensor
-     * @return
+     * Returns a double representing the current atmospheric in PSI, as read by the LPS25H pressure sensor
+     * 
+     * @return Current atmospheric pressure in PSI, as double
      */
     public static double getPressurePSI(){
         return getPressureMbar() / 68.948;
     }
 
+    /**
+     * I've noticed that the two temperature readings don't always agree, so I 
+     * have added this function to average the two values.
+     * 
+     * Returns a temperature value averaged from both LPS25H and HTS221 sensors. 
+     * @return
+     */
     public static double getTempAveraged(){
         return (getTempFromPressure() + getTempFromHumidity()) / 2;
     }
 
     /**
      * Returns a double representing the current temperature reading in degrees Celsius, as read by the HTS221 humidity sensor
-     *
+     * 
+     * @return Current temperature in degrees Celsius, as double
      */
     public static double getTempFromHumidity(){
         double temp = 0;
@@ -198,12 +194,13 @@ public class SenseHATI2C
              *
              * MSB T1_degC T1_degC, 0x35 bit 1, 0 concatenated to 0x33
              *
+             * MSB at 0x35 is a an 8-bit value (only 4 rightmost bits significant), so we need to retrieve it and split
              */
 
             int msb = tempI2C.readRegister(0x35);
             String msbString = Integer.toBinaryString(msb);
 
-            msbString = fillEightBit(msbString);
+            msbString = fillBits(msbString, 8);
 
             //The MSB has an 8 bit value, but we only need two bits for each calibration value
             String msbT0 = msbString.substring(7, 8);
@@ -216,8 +213,8 @@ public class SenseHATI2C
             String t0CalString = Integer.toBinaryString(t0Cal);
 
             //The calibration values are 10 bits, unsigned. Concatenate the MSBs
-            t0CalString = msbT0 + fillEightBit(t0CalString);
-            t1CalString = msbT1 + fillEightBit(t1CalString);
+            t0CalString = msbT0 + fillBits(t0CalString, 8);
+            t1CalString = msbT1 + fillBits(t1CalString, 8);
 
             /**
              * Convert the values to doubles, and divide by 8 (datasheet indicates that the registers hold a value
@@ -233,83 +230,49 @@ public class SenseHATI2C
              * reading, we also need the x-values, represented by the T0 and T1 values
              */
 
-            //T0 and T1 are stored in two separate registers each, as a signed 16 bit value.
-            int t0High = tempI2C.readRegister(0x3D);
-            int t0Low = tempI2C.readRegister(0x3C);
-            int t1High = tempI2C.readRegister(0x3F);
-            int t1Low = tempI2C.readRegister(0x3E);
+            //T0 and T1 are stored in two separate registers each, as 8-bit values
+            byte t0High = tempI2C.readRegisterByte(0x3D);
+            byte t0Low = tempI2C.readRegisterByte(0x3C);
+            byte t1High = tempI2C.readRegisterByte(0x3F);
+            byte t1Low = tempI2C.readRegisterByte(0x3E);
 
-            String t0HighString = Integer.toBinaryString(t0High);
-            String t0LowString = Integer.toBinaryString(t0Low);
-            String t1HighString = Integer.toBinaryString(t1High);
-            String t1LowString = Integer.toBinaryString(t1Low);
+            /*
+             * t0 and t1 are a each signed 16-bit values, so we need to concatenate them
+             */
+            short t0 = (short)((t0High << 8) | (t0Low & 0xFF));
+            short t1 = (short)((t1High << 8) | (t1Low & 0xFF));
 
-            t0HighString = fillEightBit(t0HighString);
-            t0LowString = fillEightBit(t0LowString);
-            t1HighString = fillEightBit(t1HighString);
-            t1LowString = fillEightBit(t1LowString);
-
-            //Concatenate to obtain our 16 bit values for t0 and t1
-            String t0String = t0HighString + t0LowString;
-            String t1String = t1HighString + t1LowString;
-
-            int t0 = 0;
-
-            if(t0String.charAt(0) == '1'){
-                t0 = fromTwosComplement(t0String);
-            }else{
-                t0 = Integer.parseInt(t0String, 2);
-            }
-
-            int t1 = 0;
-
-            if(t1String.charAt(0) == '1'){
-                t1 = fromTwosComplement(t1String);
-            }else{
-                t1 = Integer.parseInt(t1String, 2);
-            }
+            double t0Double = (double)t0;
+            double t1Double = (double)t1;
 
             /**
              * Now that we have two points, we can calculate the slope
              * by dividing rise by run
              */
-            Double slope = (t1CalDouble - t0CalDouble) / (t1 - t0);
+            Double slope = (t1CalDouble - t0CalDouble) / (t1Double - t0Double);
 
             /**
              * And the y-intercept can be determined by isolating for it
              * in the formula (y = mx + b, b = y - mx)
              */
-            Double b = t1CalDouble - (slope * t1);
+            Double b = t1CalDouble - (slope * t1Double);
 
             /**
              * The value in TOUT represents the independent variable for the above line equation.
              * It is represented by a signed 16-bit value.
              */
-            int tOutHigh = tempI2C.readRegister(0x2B);
-            int tOutLow = tempI2C.readRegister(0x2A);
+            byte tOutHigh = tempI2C.readRegisterByte(0x2B);
+            byte tOutLow = tempI2C.readRegisterByte(0x2A);
 
-            String tOutHighString = Integer.toBinaryString(tOutHigh);
-            String tOutLowString = Integer.toBinaryString(tOutLow);
-
-            tOutHighString = fillEightBit(tOutHighString);
-            tOutLowString = fillEightBit(tOutLowString);
-
-            String tOut = tOutHighString + tOutLowString;
-
-            int tOutInt = 0;
-
-            if(tOut.charAt(0) == '1'){
-                tOutInt = fromTwosComplement(tOut);
-            }else{
-                tOutInt = Integer.parseInt(tOut, 2);
-            }
+            short tOut = (short)((tOutHigh << 8) | (tOutLow & 0xFF));
+            double tOutDouble = (double)tOut;
 
             /**
              * Now that we have the equation for our line, and the independent
              * variable represented by tOut, we can calculate our temperature
              * reading (degrees Celsius)
              */
-            temp = (slope * tOutInt) + b;
+            temp = (slope * tOutDouble) + b;
         } catch (Exception e){
             System.out.println(e);
         }
@@ -318,6 +281,11 @@ public class SenseHATI2C
         return temp;
     }
 
+    /**
+     * Returns a double representing the current relative humidity (%), as read by the HTS221 humidity sensor
+     * 
+     * @return Current relative humidity (%), as double
+     */
     public static double getHumidity(){
         double humidity = 0;
         I2C humI2C = getI2C("HUMIDITY", HTS221_ADDRESS);
@@ -356,40 +324,17 @@ public class SenseHATI2C
              */
 
             //H0 and H1 are stored in two separate registers each, as a signed 16 bit value.
-            int h0High = humI2C.readRegister(0x37);
-            int h0Low = humI2C.readRegister(0x36);
-            int h1High = humI2C.readRegister(0x3B);
-            int h1Low = humI2C.readRegister(0x3A);
+            byte h0High = humI2C.readRegisterByte(0x37);
+            byte h0Low = humI2C.readRegisterByte(0x36);
+            byte h1High = humI2C.readRegisterByte(0x3B);
+            byte h1Low = humI2C.readRegisterByte(0x3A);
 
-            String h0HighString = Integer.toBinaryString(h0High);
-            String h0LowString = Integer.toBinaryString(h0Low);
-            String h1HighString = Integer.toBinaryString(h1High);
-            String h1LowString = Integer.toBinaryString(h1Low);
+            //Concatenate to short values
+            short h0Full = (short)((h0High << 8 ) | (h0Low & 0xFF));
+            short h1Full = (short)((h1High << 8 ) | (h1Low & 0xFF));
 
-            h0HighString = fillEightBit(h0HighString);
-            h0LowString = fillEightBit(h0LowString);
-            h1HighString = fillEightBit(h1HighString);
-            h1LowString = fillEightBit(h1LowString);
-
-            //Concatenate to obtain our 16 bit values for h0 and h1
-            String h0String = h0HighString + h0LowString;
-            String h1String = h1HighString + h1LowString;
-
-            int h0 = 0;
-
-            if(h0String.charAt(0) == '1'){
-                h0 = fromTwosComplement(h0String);
-            }else{
-                h0 = Integer.parseInt(h0String, 2);
-            }
-
-            int h1 = 0;
-
-            if(h1String.charAt(0) == '1'){
-                h1 = fromTwosComplement(h1String);
-            }else{
-                h1 = Integer.parseInt(h1String, 2);
-            }
+            double h0 = (double)h0Full;
+            double h1 = (double)h1Full;
 
             /**
              * Now that we have two points, we can calculate the slope
@@ -407,40 +352,31 @@ public class SenseHATI2C
              * The value in HOUT represents the independent variable for the above line equation.
              * It is represented by a signed 16-bit value.
              */
-            int hOutHigh = humI2C.readRegister(0x29);
-            int hOutLow = humI2C.readRegister(0x28);
+            byte hOutHigh = humI2C.readRegisterByte(0x29);
+            byte hOutLow = humI2C.readRegisterByte(0x28);
 
-            String hOutHighString = Integer.toBinaryString(hOutHigh);
-            String hOutLowString = Integer.toBinaryString(hOutLow);
-
-            hOutHighString = fillEightBit(hOutHighString);
-            hOutLowString = fillEightBit(hOutLowString);
-
-            String hOut = hOutHighString + hOutLowString;
-
-            int hOutInt = 0;
-
-            if(hOut.charAt(0) == '1'){
-                hOutInt = fromTwosComplement(hOut);
-            }else{
-                hOutInt = Integer.parseInt(hOut, 2);
-            }
+            short hOut = (short)((hOutHigh << 8) | (hOutLow & 0xFF));
 
             /**
              * Now that we have the equation for our line, and the independent
              * variable represented by tOut, we can calculate our relative humidity
              * (percent)
              */
-            humidity = (slope * hOutInt) + b;
+            humidity = (slope * hOut) + b;
 
         } catch (Exception e){
             System.out.println(e);
         }
-
-
         return humidity;
     }
 
+    /**
+     * Function to create a new I2C object
+     * 
+     * @param id ID for the new I2C object
+     * @param _ADDRESS I2C address
+     * @return New I2C object
+     */
     public static I2C getI2C(String id, int _ADDRESS){
         I2C i2c;
 
@@ -453,8 +389,10 @@ public class SenseHATI2C
     }
 
     /**
-     * Converts a passed binary string in two's complement to
-     * it's decimal equivalent
+     * Converts a twos-complement binary string into
+     * it's integer equivalent
+     * @param binary Binary string
+     * @return equivalent integer
      */
     public static int fromTwosComplement(String binary){
         int converted = 0;
@@ -489,10 +427,17 @@ public class SenseHATI2C
         return converted;
     }
 
-    static public String fillEightBit(String eightBit){
-        while(eightBit.length() < 8){
-            eightBit = '0' + eightBit;
+    /**
+     * When working with binary strings, this function will
+     * fill the appropriate number of leading zeroes
+     * @param binString Binary input string
+     * @param desiredBits Desired number of bits
+     * @return Input string with leading zeroes added to result in the appropriate number of bits
+     */
+    static public String fillBits(String binString, int desiredBits){
+        while(binString.length() < desiredBits){
+            binString = '0' + binString;
         }
-        return eightBit;
+        return binString;
     }
 }
