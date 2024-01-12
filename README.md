@@ -22,15 +22,9 @@ SenseHATI2C is a Java library designed to simplify accessing sensor data from th
 
 ### Installation
 
-1. Clone the SenseHATI2C repository:
-
-   ```bash
-   git clone https://github.com/chrisbarbati/SenseHatI2C.git
-   ```
-
-2. Include the SenseHATI2C library in your Java project and import the SenseHATI2C class. 
-
-3. Ensure the Pi4J library is set up correctly in your project. 
+1. Download SenseHATI2C.java class.
+2. Include the SenseHATI2C class in your Java project and ensure it is imported where necessary. 
+3. Ensure the Pi4J library is set up correctly in your project. Instructions are offered [here](https://pi4j.com/1.2/install.html) directly from Pi4J.
 
 ## Usage
 
