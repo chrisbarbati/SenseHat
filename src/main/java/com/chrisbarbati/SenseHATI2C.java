@@ -38,7 +38,7 @@ public class SenseHATI2C
      * 
      * @return Current temperature in degrees Celsus, as a double
      */
-    public static double getTempFromPressure(){
+    public synchronized static double getTempFromPressure(){
         double temperature = 0;
 
         I2C tempI2C = getI2C("TEMPFROMPRESSURE", LPS25H_ADDRESS);
@@ -81,7 +81,7 @@ public class SenseHATI2C
      * @param tempI2C The I2C object to be used to initialize the LPS25H sensor (must have been created with the LPS25H address as it's parameter)
      * @return True if successful
      */
-    public static boolean initializeLPS25H(I2C tempI2C){
+    public synchronized static boolean initializeLPS25H(I2C tempI2C){
         try{
             //Set CTRL_REG1. Enable output, set data rate to one-shot mode, don't update output registers until MSB and LSB update
             tempI2C.writeRegister(0x20, 0x84);
@@ -95,8 +95,12 @@ public class SenseHATI2C
             //Set CTRL_REG2, send one shot signal
             tempI2C.writeRegister(0x21, 0x01);
 
-            //Wait for one-shot to reset before proceeding, indicating a reading is ready.
-            while(tempI2C.readRegister(0x21) != 0){
+            //Set FIFO to bypass
+            tempI2C.writeRegister(0x2E, 0);
+
+            //Wait for one-shot to reset before proceeding, indicating a sample has been taken
+            //Also await the P_DA and T_DA registers of the STATUS_REG being reset to 1, indicating a new reading for pressure and temp is ready
+            while(tempI2C.readRegister(0x21) != 0 || ((tempI2C.readRegisterByte(0x27) & 0b11) != 0b11)){
 
             }
 
@@ -114,7 +118,7 @@ public class SenseHATI2C
      * @param tempI2C The I2C object to be used to initialize the LPS25H sensor (must have been created with the LPS25H address as it's parameter)
      * @return True if successful
      */
-    public static boolean initializeHTS221(I2C humidityI2C){
+    public synchronized static boolean initializeHTS221(I2C humidityI2C){
         try{
 
             //Initialization
@@ -140,7 +144,7 @@ public class SenseHATI2C
      * 
      * @return Current atmospheric pressure in millibar, as double
      */
-    public static double getPressureMbar(){
+    public synchronized static double getPressureMbar(){
         double pressure = 0;
 
         I2C pressureI2C = getI2C("PRESSURE", LPS25H_ADDRESS);
@@ -187,7 +191,7 @@ public class SenseHATI2C
      * 
      * @return Current atmospheric pressure in PSI, as double
      */
-    public static double getPressurePSI(){
+    public synchronized static double getPressurePSI(){
         return getPressureMbar() / 68.948;
     }
 
@@ -198,7 +202,7 @@ public class SenseHATI2C
      * Returns a temperature value averaged from both LPS25H and HTS221 sensors. 
      * @return
      */
-    public static double getTempAveraged(){
+    public synchronized static double getTempAveraged(){
         return (getTempFromPressure() + getTempFromHumidity()) / 2;
     }
 
@@ -207,7 +211,7 @@ public class SenseHATI2C
      * 
      * @return Current temperature in degrees Celsius, as double
      */
-    public static double getTempFromHumidity(){
+    public synchronized static double getTempFromHumidity(){
         double temp = 0;
         I2C humidityI2C = getI2C("TEMPFROMHUMIDITY", HTS221_ADDRESS);
 
@@ -316,7 +320,7 @@ public class SenseHATI2C
      * 
      * @return Current relative humidity (%), as double
      */
-    public static double getHumidity(){
+    public synchronized static double getHumidity(){
         double humidity = 0;
         I2C humI2C = getI2C("HUMIDITY", HTS221_ADDRESS);
 
