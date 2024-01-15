@@ -2,15 +2,18 @@
 
 # SenseHATI2C - Java Library for Raspberry Pi SenseHAT
 
-SenseHATI2C is a Java library designed to simplify accessing sensor data from the SenseHAT on a Raspberry Pi using the Pi4J library. This library aims to streamline the process of retrieving sensor information, alleviating the need to manually query I2C registers and enabling developers to focus on creating Java applications that leverage SenseHAT sensor data.
+SenseHATI2C is a Java library designed to simplify accessing sensor data from the SenseHAT on a Raspberry Pi using the Pi4J library.
+
+My goal is to deliver an experience similar to the [Python SenseHAT library](https://pypi.org/project/sense-hat/), making it easier and quicker for developers to get sensor data without needing to manually query I2C registers.
+
+For a real-world example, check out my [Spring Boot Weather API](https://github.com/chrisbarbati/WeatherServer). You can check out the [hosted version](http://chrisbarbati.ddns.net:2048/API/weather), currently running on a Raspberry Pi at my home, delivering real-time weather data.
 
 ## Features
 
-- **Simplified Sensor Data Retrieval**: Access sensor information from the SenseHAT with straightforward Java functions.
-- **Compatibility**: Designed to work seamlessly with the Pi4J library for Raspberry Pi.
+- **Simplified Sensor Reading Retrieval**: Access sensor information from the SenseHAT with straightforward Java functions.
 - **Support for SenseHAT Sensors**: Provides convenient methods to gather data from the SenseHAT's LPS25H pressure sensor and HTS221 humidity sensor.
   (Support for the LSM9DS1 accelerometer / magnetometer and LED2472G is planned and will be added in the near future.)
-- **Enhanced Development Experience**: Saves time and effort by handling low-level I2C interactions, allowing developers to focus on application logic.
+- **Simplified Development Experience**: Saves time and effort by handling low-level I2C interactions, allowing developers to focus on application logic.
 
 ## Getting Started
 
@@ -23,8 +26,8 @@ SenseHATI2C is a Java library designed to simplify accessing sensor data from th
 ### Installation
 
 1. Download SenseHATI2C.java class.
-2. Include the SenseHATI2C class in your Java project and ensure it is imported where necessary. 
-3. Ensure the Pi4J library is set up correctly in your project. Instructions are offered [here](https://pi4j.com/1.2/install.html) directly from Pi4J.
+2. Ensure the Pi4J library is set up correctly in your project. Instructions are offered [here](https://pi4j.com/1.2/install.html) directly from Pi4J.
+3. Include the SenseHATI2C class in your Java project and ensure it is imported where necessary. 
 
 ## Usage
 
@@ -71,7 +74,7 @@ Expanded documentation is coming soon. For now, the included functions are as fo
 
 ## Acknowledgments
 
-This project includes logic and inspiration from the [RTIMULib project](https://github.com/RPi-Distro/RTIMULib/) for handling sensor data.
+This project includes some logic and inspiration from the [RTIMULib project](https://github.com/RPi-Distro/RTIMULib/) for handling sensor data.
 
 I also want to extend my gratitude to [pinout.xyz](https://pinout.xyz/pinout/sense_hat) for their comprehensive reference for the Sense HAT.
 
