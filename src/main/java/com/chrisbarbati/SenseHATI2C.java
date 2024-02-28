@@ -32,13 +32,13 @@ public class SenseHATI2C
     static final int LPS25H_PRESS_OUT_H_REGISTER = 0x2A;
     static final int LPS25H_PRESS_OUT_L_REGISTER = 0x29;
     static final int LPS25H_PRESS_OUT_XL_REGISTER = 0x28;
-
+    
     /**
      * Returns a double representing the current temperature reading in degrees Celsius, as read by the LPS25H pressure sensor
      * 
      * @return Current temperature in degrees Celsus, as a double
      */
-    public static double getTempFromPressure(){
+    public synchronized static double getTempFromPressure(){
         double temperature = 0;
 
         I2C tempI2C = getI2C("TEMPFROMPRESSURE", LPS25H_ADDRESS);
@@ -61,7 +61,7 @@ public class SenseHATI2C
             /*
             * Concatenate the two bytes and store as short
             */
-            short tempFull = (short)((tempHigh << 8) | (tempLow & 0xFF));
+            short tempFull = (short)(((tempHigh &  0xFF) << 8) | (tempLow & 0xFF));
 
             double cycles = (double)tempFull;
 
@@ -81,10 +81,10 @@ public class SenseHATI2C
      * @param tempI2C The I2C object to be used to initialize the LPS25H sensor (must have been created with the LPS25H address as it's parameter)
      * @return True if successful
      */
-    public static boolean initializeLPS25H(I2C tempI2C){
+    public synchronized static boolean initializeLPS25H(I2C tempI2C){
         try{
-            //Set CTRL_REG1. Enable output, set data rate to 25Hz, don't update output registers until MSB and LSB update
-            tempI2C.writeRegister(0x20, 0xc4);
+            //Set CTRL_REG1. Enable output, set data rate to one-shot mode, don't update output registers until MSB and LSB update
+            tempI2C.writeRegister(0x20, 0x84);
             //Set RES_CONF. Set temp internal avereage to 16, pressure internal average to 32
             tempI2C.writeRegister(0x10, 0x05);
             //Set FIFO_CTRL. Set FIFO to generate a running average filtered pressure
@@ -144,7 +144,7 @@ public class SenseHATI2C
      * 
      * @return Current atmospheric pressure in millibar, as double
      */
-    public static double getPressureMbar(){
+    public synchronized static double getPressureMbar(){
         double pressure = 0;
 
         I2C pressureI2C = getI2C("PRESSURE", LPS25H_ADDRESS);
@@ -183,7 +183,7 @@ public class SenseHATI2C
      * 
      * @return Current atmospheric pressure in PSI, as double
      */
-    public static double getPressurePSI(){
+    public synchronized static double getPressurePSI(){
         return getPressureMbar() / 68.948;
     }
 
@@ -194,7 +194,7 @@ public class SenseHATI2C
      * Returns a temperature value averaged from both LPS25H and HTS221 sensors. 
      * @return
      */
-    public static double getTempAveraged(){
+    public synchronized static double getTempAveraged(){
         return (getTempFromPressure() + getTempFromHumidity()) / 2;
     }
 
@@ -203,21 +203,15 @@ public class SenseHATI2C
      * 
      * @return Current temperature in degrees Celsius, as double
      */
-    public static double getTempFromHumidity(){
+    public synchronized static double getTempFromHumidity(){
         double temp = 0;
-        I2C tempI2C = getI2C("TEMPFROMHUMIDITY", HTS221_ADDRESS);
+        I2C humidityI2C = getI2C("TEMPFROMHUMIDITY", HTS221_ADDRESS);
 
         try  {
 
-            //Initialization
-            //Set power status to on, BDU to non-continuous mode
-            tempI2C.writeRegister(0x20, 0x84);
-            //Send the "one-shot" signal
-            tempI2C.writeRegister(0x21, 0x01);
-
-            //Wait for the one-shot register to set itself back to zero, indicating a reading is ready.
-            while(tempI2C.readRegister(0x21) != 0){
-
+            //Initialize HTS221
+            if(!initializeHTS221(humidityI2C)){
+                System.out.println("Error initializing HTS221");
             }
 
             /**
@@ -236,8 +230,8 @@ public class SenseHATI2C
 
             //The MSB has an 8 bit value, but we only need two bits for each calibration value
 
-            int t0Cal = tempI2C.readRegister(0x32);
-            int t1Cal = tempI2C.readRegister(0x33);
+            int t0Cal = humidityI2C.readRegister(0x32);
+            int t1Cal = humidityI2C.readRegister(0x33);
 
             //The calibration values are 10 bits. Concatenate the MSBs on the left side, and divide by 8 as per datasheet
             double t0CalDouble = (double)((msbT0 << 8) | (t0Cal & 0xFF)) / 8;
@@ -251,16 +245,16 @@ public class SenseHATI2C
              */
 
             //T0 and T1 are stored in two separate registers each, as 8-bit values
-            byte t0High = tempI2C.readRegisterByte(0x3D);
-            byte t0Low = tempI2C.readRegisterByte(0x3C);
-            byte t1High = tempI2C.readRegisterByte(0x3F);
-            byte t1Low = tempI2C.readRegisterByte(0x3E);
+            byte t0High = humidityI2C.readRegisterByte(0x3D);
+            byte t0Low = humidityI2C.readRegisterByte(0x3C);
+            byte t1High = humidityI2C.readRegisterByte(0x3F);
+            byte t1Low = humidityI2C.readRegisterByte(0x3E);
 
             /*
              * t0 and t1 are a each signed 16-bit values, so we need to concatenate them
              */
-            short t0 = (short)((t0High << 8) | (t0Low & 0xFF));
-            short t1 = (short)((t1High << 8) | (t1Low & 0xFF));
+            short t0 = (short)(((t0High &  0xFF) << 8) | (t0Low & 0xFF));
+            short t1 = (short)(((t1High &  0xFF) << 8) | (t1Low & 0xFF));
 
             double t0Double = (double)t0;
             double t1Double = (double)t1;
@@ -281,10 +275,10 @@ public class SenseHATI2C
              * The value in TOUT represents the independent variable for the above line equation.
              * It is represented by a signed 16-bit value.
              */
-            byte tOutHigh = tempI2C.readRegisterByte(0x2B);
-            byte tOutLow = tempI2C.readRegisterByte(0x2A);
+            byte tOutHigh = humidityI2C.readRegisterByte(0x2B);
+            byte tOutLow = humidityI2C.readRegisterByte(0x2A);
 
-            short tOut = (short)((tOutHigh << 8) | (tOutLow & 0xFF));
+            short tOut = (short)(((tOutHigh &  0xFF) << 8) | (tOutLow & 0xFF));
             double tOutDouble = (double)tOut;
 
             /**
@@ -306,7 +300,7 @@ public class SenseHATI2C
      * 
      * @return Current relative humidity (%), as double
      */
-    public static double getHumidity(){
+    public synchronized static double getHumidity(){
         double humidity = 0;
         I2C humI2C = getI2C("HUMIDITY", HTS221_ADDRESS);
 
@@ -341,8 +335,8 @@ public class SenseHATI2C
             byte h1Low = humI2C.readRegisterByte(0x3A);
 
             //Concatenate to short values
-            short h0Full = (short)((h0High << 8 ) | (h0Low & 0xFF));
-            short h1Full = (short)((h1High << 8 ) | (h1Low & 0xFF));
+            short h0Full = (short)(((h0High &  0xFF) << 8 ) | (h0Low & 0xFF));
+            short h1Full = (short)(((h1High &  0xFF) << 8 ) | (h1Low & 0xFF));
 
             double h0 = (double)h0Full;
             double h1 = (double)h1Full;
@@ -366,7 +360,7 @@ public class SenseHATI2C
             byte hOutHigh = humI2C.readRegisterByte(0x29);
             byte hOutLow = humI2C.readRegisterByte(0x28);
 
-            short hOut = (short)((hOutHigh << 8) | (hOutLow & 0xFF));
+            short hOut = (short)(((hOutHigh &  0xFF) << 8) | (hOutLow & 0xFF));
 
             /**
              * Now that we have the equation for our line, and the independent
