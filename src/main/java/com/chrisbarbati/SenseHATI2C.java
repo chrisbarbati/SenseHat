@@ -92,11 +92,11 @@ public class SenseHATI2C
             //Set CTRL_REG4. Unclear what this does in RTIMU, doing it here until I can test.
             tempI2C.writeRegister(0x23, 0x40);
 
-            //Set CTRL_REG2, send one shot signal
-            tempI2C.writeRegister(0x21, 0x01);
-
             //Set FIFO to bypass
             tempI2C.writeRegister(0x2E, 0);
+
+            //Set CTRL_REG2, send one shot signal
+            tempI2C.writeRegister(0x21, 0x01);
 
             //Wait for one-shot to reset before proceeding, indicating a sample has been taken
             //Also await the P_DA and T_DA registers of the STATUS_REG being reset to 1, indicating a new reading for pressure and temp is ready
@@ -115,7 +115,7 @@ public class SenseHATI2C
      * Initializes the appropriate registers on the HTS221
      * to enable reading temperature / pressure.
      * 
-     * @param tempI2C The I2C object to be used to initialize the LPS25H sensor (must have been created with the LPS25H address as it's parameter)
+     * @param humidityI2C The I2C object to be used to initialize the LPS25H sensor (must have been created with the LPS25H address as it's parameter)
      * @return True if successful
      */
     public synchronized static boolean initializeHTS221(I2C humidityI2C){
@@ -161,21 +161,13 @@ public class SenseHATI2C
             int pressureXL = pressureI2C.readRegister(LPS25H_PRESS_OUT_XL_REGISTER);
 
             /**
-             * Concatenate the three 8-bit values to create a signed 24-bit value, and store as a String
-             * The additional format / replace is due to Java not having an explicit 24-bit type. Will need to look for a
-             * better way to handle this
+             * Concatenate the three 8-bit values to create a signed 24-bit value
             */
-
-            //TODO: Review documentation and return to this code
-            String pressureString = String.format("%24s", Integer.toBinaryString((pressureH << 16) | (pressureL << 8) | pressureXL)).replace(' ', '0');
+            int pressureFull = (int)(((pressureH &  0xFF) << 16) | ((pressureL & 0xFF) << 8) | (pressureXL & 0xFF));
 
             double cycles;
 
-            if(pressureString.charAt(0) == '1'){
-                cycles = fromTwosComplement(pressureString);
-            }else{
-                cycles = Integer.parseInt(pressureString, 2);
-            }
+            cycles = (double)(pressureFull);
 
             pressure = (cycles/4096);
 
@@ -231,31 +223,19 @@ public class SenseHATI2C
              * MSB at 0x35 is a an 8-bit value (only 4 rightmost bits significant), so we need to retrieve it and split
              */
 
-            int msb = humidityI2C.readRegister(0x35);
-            String msbString = Integer.toBinaryString(msb);
+            int msb = (tempI2C.readRegister(0x35) & 0xF);
 
-            msbString = fillBits(msbString, 8);
+            int msbT0 = msb & 0x3;
+            int msbT1 = (msb >> 2) & 0x3;
 
             //The MSB has an 8 bit value, but we only need two bits for each calibration value
-            String msbT0 = msbString.substring(7, 8);
-            String msbT1 = msbString.substring(5, 6);
 
             int t0Cal = humidityI2C.readRegister(0x32);
             int t1Cal = humidityI2C.readRegister(0x33);
 
-            String t1CalString = Integer.toBinaryString(t1Cal);
-            String t0CalString = Integer.toBinaryString(t0Cal);
-
-            //The calibration values are 10 bits, unsigned. Concatenate the MSBs
-            t0CalString = msbT0 + fillBits(t0CalString, 8);
-            t1CalString = msbT1 + fillBits(t1CalString, 8);
-
-            /**
-             * Convert the values to doubles, and divide by 8 (datasheet indicates that the registers hold a value
-             * representing 8x the actual calibration value)
-             */
-            double t0CalDouble = Integer.parseInt(t0CalString, 2) / 8;
-            double t1CalDouble = Integer.parseInt(t1CalString, 2) / 8;
+            //The calibration values are 10 bits. Concatenate the MSBs on the left side, and divide by 8 as per datasheet
+            double t0CalDouble = (double)((msbT0 << 8) | (t0Cal & 0xFF)) / 8;
+            double t1CalDouble = (double)((msbT1 << 8) | (t1Cal & 0xFF)) / 8;
 
             /**
              * The values we just calculated represent the y-values of two points.
@@ -337,18 +317,9 @@ public class SenseHATI2C
 
             }
 
-            int h0Cal = humI2C.readRegister(0x30);
-            int h1Cal = humI2C.readRegister(0x31);
-
-            String h1CalString = Integer.toBinaryString(h1Cal);
-            String h0CalString = Integer.toBinaryString(h0Cal);
-
-            /**
-             * Convert the values to doubles, and divide by 2 (datasheet indicates that the registers hold a value
-             * representing 2x the actual calibration value)
-             */
-            double h0CalDouble = Integer.parseInt(h0CalString, 2) / 2;
-            double h1CalDouble = Integer.parseInt(h1CalString, 2) / 2;
+            //The two calibration values are stored as 2x value
+            double h0Cal = (double)humI2C.readRegister(0x30) / 2;
+            double h1Cal = (double)humI2C.readRegister(0x31) / 2;
 
             /**
              * The values we just calculated represent the y-values of two points.
@@ -374,13 +345,13 @@ public class SenseHATI2C
              * Now that we have two points, we can calculate the slope
              * by dividing rise by run
              */
-            Double slope = (h1CalDouble - h0CalDouble) / (h1 - h0);
+            Double slope = (h1Cal - h0Cal) / (h1 - h0);
 
             /**
              * And the y-intercept can be determined by isolating for it
              * in the formula (y = mx + b, b = y - mx)
              */
-            Double b = h1CalDouble - (slope * h1);
+            Double b = h1Cal - (slope * h1);
 
             /**
              * The value in HOUT represents the independent variable for the above line equation.
@@ -420,58 +391,5 @@ public class SenseHATI2C
         i2c = i2CProvider.create(i2cConfig);
 
         return i2c;
-    }
-
-    /**
-     * Converts a twos-complement binary string into
-     * it's integer equivalent
-     * @param binary Binary string
-     * @return equivalent integer
-     */
-    public static int fromTwosComplement(String binary){
-        int converted = 0;
-
-        String twos = "", ones = "";
-
-        for (int i = 0; i < binary.length(); i++) {
-            ones += binary.charAt(i) == '0' ? "1" : "0";
-        }
-
-
-        StringBuilder builder = new StringBuilder(ones);
-        boolean b = false;
-        for (int i = ones.length() - 1; i > 0; i--) {
-            if (ones.charAt(i) == '1') {
-                builder.setCharAt(i, '0');
-            } else {
-                builder.setCharAt(i, '1');
-                b = true;
-                break;
-            }
-        }
-        if (!b)
-            builder.append("1", 0, 7);
-
-        twos = builder.toString();
-
-        converted = Integer.parseInt(twos, 2);
-
-        converted = converted * -1;
-
-        return converted;
-    }
-
-    /**
-     * When working with binary strings, this function will
-     * fill the appropriate number of leading zeroes
-     * @param binString Binary input string
-     * @param desiredBits Desired number of bits
-     * @return Input string with leading zeroes added to result in the appropriate number of bits
-     */
-    static public String fillBits(String binString, int desiredBits){
-        while(binString.length() < desiredBits){
-            binString = '0' + binString;
-        }
-        return binString;
     }
 }
