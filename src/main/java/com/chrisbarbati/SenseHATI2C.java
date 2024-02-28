@@ -223,7 +223,7 @@ public class SenseHATI2C
              * MSB at 0x35 is a an 8-bit value (only 4 rightmost bits significant), so we need to retrieve it and split
              */
 
-            int msb = (tempI2C.readRegister(0x35) & 0xF);
+            int msb = (humidityI2C.readRegister(0x35) & 0xF);
 
             int msbT0 = msb & 0x3;
             int msbT1 = (msb >> 2) & 0x3;
