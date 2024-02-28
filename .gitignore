@@ -4,6 +4,9 @@
 # Log file
 *.log
 
+#Main class used for testing only
+Main.java
+
 # BlueJ files
 *.ctxt
 
