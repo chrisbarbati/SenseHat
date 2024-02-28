@@ -92,11 +92,11 @@ public class SenseHATI2C
             //Set CTRL_REG4. Unclear what this does in RTIMU, doing it here until I can test.
             tempI2C.writeRegister(0x23, 0x40);
 
-            //Set CTRL_REG2, send one shot signal
-            tempI2C.writeRegister(0x21, 0x01);
-
             //Set FIFO to bypass
             tempI2C.writeRegister(0x2E, 0);
+
+            //Set CTRL_REG2, send one shot signal
+            tempI2C.writeRegister(0x21, 0x01);
 
             //Wait for one-shot to reset before proceeding, indicating a sample has been taken
             //Also await the P_DA and T_DA registers of the STATUS_REG being reset to 1, indicating a new reading for pressure and temp is ready
@@ -229,31 +229,19 @@ public class SenseHATI2C
              * MSB at 0x35 is a an 8-bit value (only 4 rightmost bits significant), so we need to retrieve it and split
              */
 
-            int msb = tempI2C.readRegister(0x35);
-            String msbString = Integer.toBinaryString(msb);
+            int msb = (tempI2C.readRegister(0x35) & 0xF);
 
-            msbString = fillBits(msbString, 8);
+            int msbT0 = msb & 0x3;
+            int msbT1 = (msb >> 2) & 0x3;
 
             //The MSB has an 8 bit value, but we only need two bits for each calibration value
-            String msbT0 = msbString.substring(7, 8);
-            String msbT1 = msbString.substring(5, 6);
 
             int t0Cal = tempI2C.readRegister(0x32);
             int t1Cal = tempI2C.readRegister(0x33);
 
-            String t1CalString = Integer.toBinaryString(t1Cal);
-            String t0CalString = Integer.toBinaryString(t0Cal);
-
-            //The calibration values are 10 bits, unsigned. Concatenate the MSBs
-            t0CalString = msbT0 + fillBits(t0CalString, 8);
-            t1CalString = msbT1 + fillBits(t1CalString, 8);
-
-            /**
-             * Convert the values to doubles, and divide by 8 (datasheet indicates that the registers hold a value
-             * representing 8x the actual calibration value)
-             */
-            double t0CalDouble = Integer.parseInt(t0CalString, 2) / 8;
-            double t1CalDouble = Integer.parseInt(t1CalString, 2) / 8;
+            //The calibration values are 10 bits. Concatenate the MSBs on the left side, and divide by 8 as per datasheet
+            double t0CalDouble = (double)((msbT0 << 8) | (t0Cal & 0xFF)) / 8;
+            double t1CalDouble = (double)((msbT1 << 8) | (t1Cal & 0xFF)) / 8;
 
             /**
              * The values we just calculated represent the y-values of two points.
@@ -409,19 +397,5 @@ public class SenseHATI2C
         i2c = i2CProvider.create(i2cConfig);
 
         return i2c;
-    }
-
-    /**
-     * When working with binary strings, this function will
-     * fill the appropriate number of leading zeroes
-     * @param binString Binary input string
-     * @param desiredBits Desired number of bits
-     * @return Input string with leading zeroes added to result in the appropriate number of bits
-     */
-    static public String fillBits(String binString, int desiredBits){
-        while(binString.length() < desiredBits){
-            binString = '0' + binString;
-        }
-        return binString;
     }
 }
