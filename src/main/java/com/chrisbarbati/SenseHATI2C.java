@@ -37,8 +37,8 @@ public class SenseHATI2C
      * Enums for temperature and pressure units
      */
 
-    static enum TempUnits {CELSIUS, FAHRENHEIT, KELVIN};
-    static enum PressureUnits {MILLIBAR, PSI};
+    public static enum TempUnits {CELSIUS, FAHRENHEIT, KELVIN};
+    public static enum PressureUnits {MILLIBAR, PSI};
     
     /**
      * Returns a double representing the current temperature reading, as read by the LPS25H pressure sensor

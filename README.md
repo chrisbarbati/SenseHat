@@ -36,13 +36,13 @@ For a real-world example, check out my [Spring Boot Weather API](https://github.
 Here's a simple example demonstrating how to use the SenseHATI2C library to retrieve temperature data:
 
 ```java
-import com.example.sensehati2c.SenseHATI2C; //Verify this path is correct for your package structure
+import com.example.SenseHATI2C.*; //Verify this path is correct for your package structure
 
 public class SenseHATExample {
 
     public static void main(String[] args) {
         try {
-            double temperature = SenseHATI2C.getTempFromPressure(); //Gets the temperature from the LPS25H pressure sensor, using the static method getTempFromPressure();
+            double temperature = SenseHATI2C.getTempFromPressure(TempUnits.CELSIUS); //Gets the temperature from the LPS25H pressure sensor, using the static method getTempFromPressure() and Celsius as a unit
             System.out.println("Temperature: " + temperature + " °C");
         } catch (Exception e) {
             e.printStackTrace();
@@ -65,11 +65,9 @@ public class SenseHATExample {
 
 Expanded documentation is coming soon. For now, the included functions are as follows:
 
- - getTempFromPressure() - Returns the current temperature in degrees Celsius as a double value, as read from the LPS25H pressure sensor.
- - getTempFromHumidity() - Returns the current temperature in degrees Celsius as a double value, as read from the HTS221 humidity sensor.
- - getTempAveraged() - Calls the getTempFromPressure() and getTempFromHumidity() functions and returns an average of the results.
- - getPressureMbar() - Returns the current pressure in millibar as a double value.
- - getPressurePSI() - Returns the current pressure in PSI as a double value.
+ - getTempFromPressure(TempUnits unit) - Returns the current temperature in degrees Celsius as a double value, as read from the LPS25H pressure sensor.
+ - getTempFromHumidity(TempUnits unit) - Returns the current temperature in degrees Celsius as a double value, as read from the HTS221 humidity sensor.
+ - getPressure(PressureUnits unit)
  - getHumidity() - Returns the current relative humidity percentage as a double value.
 
 ## Acknowledgments
