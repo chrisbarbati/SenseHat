@@ -37,13 +37,13 @@ public class SenseHATI2C
      * Enums for temperature and pressure units
      */
 
-    static enum TempUnits {Celsius, Fahrenheit, Kelvin};
-    static enum PressureUnits {Millibar, PSI};
+    static enum TempUnits {CELSIUS, FAHRENHEIT, KELVIN};
+    static enum PressureUnits {MILLIBAR, PSI};
     
     /**
-     * Returns a double representing the current temperature reading in degrees Celsius, as read by the LPS25H pressure sensor
+     * Returns a double representing the current temperature reading in degrees CELSIUS, as read by the LPS25H pressure sensor
      * 
-     * @return Current temperature in degrees Celsius, as a double
+     * @return Current temperature in degrees CELSIUS, as a double
      */
     public synchronized static double getTempFromPressure(TempUnits units){
         double temperature = 0;
@@ -72,20 +72,20 @@ public class SenseHATI2C
 
             double cycles = (double)tempFull;
 
-            //Temperature offset is cycles/480, relative to a base number of 42.5 degrees Celsius
+            //Temperature offset is cycles/480, relative to a base number of 42.5 degrees CELSIUS
             temperature = 42.5 + (cycles/480);
         } catch (Exception e){
             System.out.println(e);
         }
 
         switch (units){
-            case Fahrenheit:
+            case FAHRENHEIT:
                 temperature = (temperature * 9/5) + 32;
                 break;
-            case Kelvin:
+            case KELVIN:
                 temperature += 273.15;
                 break;
-            case Celsius:
+            case CELSIUS:
                 break;
             default:
                 break;
@@ -160,9 +160,9 @@ public class SenseHATI2C
     }
 
     /**
-     * Returns a double representing the current pressure in millibar, as read by the LPS25H pressure sensor
+     * Returns a double representing the current pressure in MILLIBAR, as read by the LPS25H pressure sensor
      * 
-     * @return Current atmospheric pressure in millibar, as double
+     * @return Current atmospheric pressure in MILLIBAR, as double
      */
     public synchronized static double getPressure(PressureUnits units){
         double pressure = 0;
@@ -199,7 +199,7 @@ public class SenseHATI2C
             case PSI:
                 pressure = pressure / 68.9476;
                 break;
-            case Millibar:
+            case MILLIBAR:
                 break;
             default:
                 break;
@@ -209,9 +209,9 @@ public class SenseHATI2C
     }
 
     /**
-     * Returns a double representing the current temperature reading in degrees Celsius, as read by the HTS221 humidity sensor
+     * Returns a double representing the current temperature reading in degrees CELSIUS, as read by the HTS221 humidity sensor
      * 
-     * @return Current temperature in degrees Celsius, as double
+     * @return Current temperature in degrees CELSIUS, as double
      */
     public synchronized static double getTempFromHumidity(TempUnits units){
         double temp = 0;
@@ -294,7 +294,7 @@ public class SenseHATI2C
             /**
              * Now that we have the equation for our line, and the independent
              * variable represented by tOut, we can calculate our temperature
-             * reading (degrees Celsius)
+             * reading (degrees CELSIUS)
              */
             temp = (slope * tOutDouble) + b;
 
@@ -303,13 +303,13 @@ public class SenseHATI2C
         }
 
         switch (units){
-            case Fahrenheit:
+            case FAHRENHEIT:
                 temp = (temp * 9/5) + 32;
                 break;
-            case Kelvin:
+            case KELVIN:
                 temp += 273.15;
                 break;
-            case Celsius:
+            case CELSIUS:
                 break;
             default:
                 break;
