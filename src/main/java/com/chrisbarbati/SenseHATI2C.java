@@ -32,13 +32,20 @@ public class SenseHATI2C
     static final int LPS25H_PRESS_OUT_H_REGISTER = 0x2A;
     static final int LPS25H_PRESS_OUT_L_REGISTER = 0x29;
     static final int LPS25H_PRESS_OUT_XL_REGISTER = 0x28;
+
+    /*
+     * Enums for temperature and pressure units
+     */
+
+    static enum TempUnits {Celsius, Fahrenheit, Kelvin};
+    static enum PressureUnits {Millibar, PSI};
     
     /**
      * Returns a double representing the current temperature reading in degrees Celsius, as read by the LPS25H pressure sensor
      * 
-     * @return Current temperature in degrees Celsus, as a double
+     * @return Current temperature in degrees Celsius, as a double
      */
-    public synchronized static double getTempFromPressure(){
+    public synchronized static double getTempFromPressure(TempUnits units){
         double temperature = 0;
 
         I2C tempI2C = getI2C("TEMPFROMPRESSURE", LPS25H_ADDRESS);
@@ -71,8 +78,21 @@ public class SenseHATI2C
             System.out.println(e);
         }
 
+        switch (units){
+            case Fahrenheit:
+                temperature = (temperature * 9/5) + 32;
+                break;
+            case Kelvin:
+                temperature += 273.15;
+                break;
+            case Celsius:
+                break;
+            default:
+                break;
+        }
+
         return temperature;
-    }
+}
 
     /**
      * Initializes the appropriate registers on the LPS25H
@@ -144,7 +164,7 @@ public class SenseHATI2C
      * 
      * @return Current atmospheric pressure in millibar, as double
      */
-    public synchronized static double getPressureMbar(){
+    public synchronized static double getPressure(PressureUnits units){
         double pressure = 0;
 
         I2C pressureI2C = getI2C("PRESSURE", LPS25H_ADDRESS);
@@ -175,27 +195,17 @@ public class SenseHATI2C
             System.out.println(e);
         }
 
+        switch (units){
+            case PSI:
+                pressure = pressure / 68.9476;
+                break;
+            case Millibar:
+                break;
+            default:
+                break;
+        }
+
         return pressure;
-    }
-
-    /**
-     * Returns a double representing the current atmospheric in PSI, as read by the LPS25H pressure sensor
-     * 
-     * @return Current atmospheric pressure in PSI, as double
-     */
-    public synchronized static double getPressurePSI(){
-        return getPressureMbar() / 68.948;
-    }
-
-    /**
-     * I've noticed that the two temperature readings don't always agree, so I 
-     * have added this function to average the two values.
-     * 
-     * Returns a temperature value averaged from both LPS25H and HTS221 sensors. 
-     * @return
-     */
-    public synchronized static double getTempAveraged(){
-        return (getTempFromPressure() + getTempFromHumidity()) / 2;
     }
 
     /**
@@ -203,7 +213,7 @@ public class SenseHATI2C
      * 
      * @return Current temperature in degrees Celsius, as double
      */
-    public synchronized static double getTempFromHumidity(){
+    public synchronized static double getTempFromHumidity(TempUnits units){
         double temp = 0;
         I2C humidityI2C = getI2C("TEMPFROMHUMIDITY", HTS221_ADDRESS);
 
@@ -287,10 +297,23 @@ public class SenseHATI2C
              * reading (degrees Celsius)
              */
             temp = (slope * tOutDouble) + b;
+
         } catch (Exception e){
             System.out.println(e);
         }
 
+        switch (units){
+            case Fahrenheit:
+                temp = (temp * 9/5) + 32;
+                break;
+            case Kelvin:
+                temp += 273.15;
+                break;
+            case Celsius:
+                break;
+            default:
+                break;
+        }
 
         return temp;
     }
@@ -393,3 +416,4 @@ public class SenseHATI2C
         return i2c;
     }
 }
+
