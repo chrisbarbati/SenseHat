@@ -41,9 +41,10 @@ public class SenseHATI2C
     static enum PressureUnits {MILLIBAR, PSI};
     
     /**
-     * Returns a double representing the current temperature reading in degrees CELSIUS, as read by the LPS25H pressure sensor
+     * Returns a double representing the current temperature reading, as read by the LPS25H pressure sensor
      * 
-     * @return Current temperature in degrees CELSIUS, as a double
+     * @param units The units in which the temperature will be returned
+     * @return Current temperature, as a double
      */
     public synchronized static double getTempFromPressure(TempUnits units){
         double temperature = 0;
@@ -160,9 +161,10 @@ public class SenseHATI2C
     }
 
     /**
-     * Returns a double representing the current pressure in MILLIBAR, as read by the LPS25H pressure sensor
+     * Returns a double representing the current pressure, as read by the LPS25H pressure sensor
      * 
-     * @return Current atmospheric pressure in MILLIBAR, as double
+     * @param units The units in which the pressure will be returned
+     * @return Current atmospheric pressure, as double
      */
     public synchronized static double getPressure(PressureUnits units){
         double pressure = 0;
@@ -209,9 +211,10 @@ public class SenseHATI2C
     }
 
     /**
-     * Returns a double representing the current temperature reading in degrees CELSIUS, as read by the HTS221 humidity sensor
+     * Returns a double representing the current temperature, as read by the HTS221 humidity sensor
      * 
-     * @return Current temperature in degrees CELSIUS, as double
+     * @param units The units in which the temperature will be returned
+     * @return Current temperature, as double
      */
     public synchronized static double getTempFromHumidity(TempUnits units){
         double temp = 0;
