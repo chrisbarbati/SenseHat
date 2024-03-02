@@ -32,13 +32,6 @@ public class SenseHATI2C
     static final int LPS25H_PRESS_OUT_H_REGISTER = 0x2A;
     static final int LPS25H_PRESS_OUT_L_REGISTER = 0x29;
     static final int LPS25H_PRESS_OUT_XL_REGISTER = 0x28;
-
-    /*
-     * Enums for temperature and pressure units
-     */
-
-    public static enum TempUnits {CELSIUS, FAHRENHEIT, KELVIN};
-    public static enum PressureUnits {MILLIBAR, PSI};
     
     /**
      * Returns a double representing the current temperature reading, as read by the LPS25H pressure sensor
