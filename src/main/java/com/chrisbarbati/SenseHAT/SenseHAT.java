@@ -16,7 +16,7 @@ import com.pi4j.io.i2c.I2CProvider;
  * the Raspberry Pi Sense Hat
  */
 
-public class SenseHATI2C
+public class SenseHAT
 {
     /**
      * I2C _addresses of the various chips on the Sense HAT
@@ -42,7 +42,7 @@ public class SenseHATI2C
      * @param units The units in which the temperature will be returned
      * @return Current temperature, as a double
      */
-    public synchronized static double getTempFromPressure(TempUnits units){
+    public synchronized double getTempFromPressure(TempUnits units){
         double temperature = 0;
 
         I2C tempI2C = getI2C("TEMPFROMPRESSURE", LPS25H_ADDRESS);
@@ -98,7 +98,7 @@ public class SenseHATI2C
      * @param tempI2C The I2C object to be used to initialize the LPS25H sensor (must have been created with the LPS25H address as it's parameter)
      * @return True if successful
      */
-    public synchronized static boolean initializeLPS25H(I2C tempI2C){
+    public synchronized boolean initializeLPS25H(I2C tempI2C){
         try{
             //Set CTRL_REG1. Enable output, set data rate to one-shot mode, don't update output registers until MSB and LSB update
             tempI2C.writeRegister(0x20, 0x84);
@@ -135,7 +135,7 @@ public class SenseHATI2C
      * @param humidityI2C The I2C object to be used to initialize the LPS25H sensor (must have been created with the LPS25H address as it's parameter)
      * @return True if successful
      */
-    public synchronized static boolean initializeHTS221(I2C humidityI2C){
+    public synchronized boolean initializeHTS221(I2C humidityI2C){
         try{
 
             //Initialization
@@ -162,7 +162,7 @@ public class SenseHATI2C
      * @param units The units in which the pressure will be returned
      * @return Current atmospheric pressure, as double
      */
-    public synchronized static double getPressure(PressureUnits units){
+    public synchronized double getPressure(PressureUnits units){
         double pressure = 0;
 
         I2C pressureI2C = getI2C("PRESSURE", LPS25H_ADDRESS);
@@ -212,7 +212,7 @@ public class SenseHATI2C
      * @param units The units in which the temperature will be returned
      * @return Current temperature, as double
      */
-    public synchronized static double getTempFromHumidity(TempUnits units){
+    public synchronized double getTempFromHumidity(TempUnits units){
         double temp = 0;
         I2C humidityI2C = getI2C("TEMPFROMHUMIDITY", HTS221_ADDRESS);
 
@@ -317,7 +317,7 @@ public class SenseHATI2C
      * 
      * @return Current relative humidity (%), as double
      */
-    public synchronized static double getHumidity(){
+    public synchronized double getHumidity(){
         double humidity = 0;
         I2C humI2C = getI2C("HUMIDITY", HTS221_ADDRESS);
 
@@ -392,7 +392,7 @@ public class SenseHATI2C
      * @param _ADDRESS I2C address
      * @return New I2C object
      */
-    public static I2C getI2C(String id, int _ADDRESS){
+    public I2C getI2C(String id, int _ADDRESS){
         I2C i2c;
 
         Context pi4j = Pi4J.newAutoContext();

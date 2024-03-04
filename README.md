@@ -1,8 +1,8 @@
 
 
-# SenseHATI2C - Java Library for Raspberry Pi SenseHAT
+# SenseHAT - Java Library for Raspberry Pi SenseHAT
 
-SenseHATI2C is a Java library designed to simplify accessing sensor data from the SenseHAT on a Raspberry Pi using the Pi4J library.
+SenseHAT is a Java library designed to simplify accessing sensor data from the SenseHAT on a Raspberry Pi using the Pi4J library.
 
 My goal is to deliver an experience similar to the [Python SenseHAT library](https://pypi.org/project/sense-hat/), making it easier and quicker for developers to get sensor data without needing to manually query I2C registers.
 
@@ -23,32 +23,46 @@ For a real-world example, check out my [Spring Boot Weather API](https://github.
 - Java Development Kit (JDK)
 - Pi4J library
 
-### Installation
+### Installation (manual)
 
-1. Download SenseHATI2C.java class.
-2. Ensure the Pi4J library is set up correctly in your project. Instructions are offered [here](https://pi4j.com/1.2/install.html) directly from Pi4J.
-3. Include the SenseHATI2C classes in your Java project (best to keep in their own package for organization) and ensure it is imported where necessary. 
+1. Download the appropriate JAR file from releases (recommended that you select the newest)
+2. Save file within your project folder
+3. Add to your classpath in your IDE
+
+### Installation (Maven)
+
+1. Download the appropriate JAR file from releases (recommended that you select the newest)
+2. Add to your Maven repository (~.m2/repository/com/chrisbarbati/sensehat/{version number here})
+3. Add Maven dependency:
+
+```
+<dependency>
+            <groupId>com.chrisbarbati</groupId>
+            <artifactId>sensehat</artifactId>
+            <version>1.0</version>
+</dependency>
+```
+
+4. Update Maven repository if necessary, and reload project
 
 ## Usage
 
 ### Example
 
-Here's a simple example demonstrating how to use the SenseHATI2C library to retrieve temperature data:
+Here's a simple example demonstrating how to use the SenseHAT library to retrieve temperature data:
 
 ```java
-import com.example.SenseHATI2C.*; //Verify this path is correct for your package structure
+package com.chrisbarbati.SenseHAT; //Your package name here
 
-public class SenseHATExample {
+import com.chrisbarbati.SenseHAT.Units.TempUnits;
 
-    public static void main(String[] args) {
-        try {
-            double temperature = SenseHATI2C.getTempFromPressure(TempUnits.CELSIUS); //Gets the temperature from the LPS25H pressure sensor, using the static method getTempFromPressure() and Celsius as a unit
-            System.out.println("Temperature: " + temperature + " °C");
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+public class Main {
+    public static void main(String[] args){
+        SenseHAT hat = new SenseHAT();
+        System.out.println(hat.getTempFromPressure(TempUnits.CELSIUS));
     }
 }
+
 ```
 
 ## Future Plans
