@@ -6,7 +6,7 @@ SenseHAT is a Java library designed to simplify accessing sensor data from the S
 
 My goal is to deliver an experience similar to the [Python SenseHAT library](https://pypi.org/project/sense-hat/), making it easier and quicker for developers to get sensor data without needing to manually query I2C registers.
 
-For a real-world example, check out my [Spring Boot Weather API](https://github.com/chrisbarbati/WeatherServer). You can check out the [hosted version](http://chrisbarbati.ddns.net:2048/API/weather), currently running on a Raspberry Pi at my home, delivering real-time weather data.
+For a real-world example, check out my [Spring Boot Weather API](https://github.com/chrisbarbati/WeatherServer). You can check out the [hosted version](https://chrisbarbati.ddns.net:2048/API/weather), currently running on a Raspberry Pi at my home, delivering real-time weather data.
 
 ## Features
 
