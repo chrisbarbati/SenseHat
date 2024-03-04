@@ -1,5 +1,8 @@
-package com.chrisbarbati;
+package com.chrisbarbati.SenseHAT;
 
+import com.chrisbarbati.SenseHAT.Units.*;
+import com.chrisbarbati.SenseHAT.Builder.*;
+import com.chrisbarbati.SenseHAT.Cartesian.*;
 import com.pi4j.Pi4J;
 import com.pi4j.context.Context;
 import com.pi4j.io.i2c.I2C;
@@ -266,16 +269,11 @@ public class SenseHATI2C
             double t1Double = (double)t1;
 
             /**
-             * Now that we have two points, we can calculate the slope
-             * by dividing rise by run
+             * Get the Line that these points describe
              */
-            Double slope = (t1CalDouble - t0CalDouble) / (t1Double - t0Double);
 
-            /**
-             * And the y-intercept can be determined by isolating for it
-             * in the formula (y = mx + b, b = y - mx)
-             */
-            Double b = t1CalDouble - (slope * t1Double);
+            LineBuilder lb = new LineBuilder();
+            Line line = lb.getLine(t0Double, t0CalDouble, t1Double, t1CalDouble);
 
             /**
              * The value in TOUT represents the independent variable for the above line equation.
@@ -292,7 +290,7 @@ public class SenseHATI2C
              * variable represented by tOut, we can calculate our temperature
              * reading (degrees CELSIUS)
              */
-            temp = (slope * tOutDouble) + b;
+            temp = line.findYGivenX(tOutDouble);
 
         } catch (Exception e){
             System.out.println(e);
@@ -360,17 +358,9 @@ public class SenseHATI2C
             double h0 = (double)h0Full;
             double h1 = (double)h1Full;
 
-            /**
-             * Now that we have two points, we can calculate the slope
-             * by dividing rise by run
-             */
-            Double slope = (h1Cal - h0Cal) / (h1 - h0);
-
-            /**
-             * And the y-intercept can be determined by isolating for it
-             * in the formula (y = mx + b, b = y - mx)
-             */
-            Double b = h1Cal - (slope * h1);
+            //Get the line that these points describe
+            LineBuilder lb = new LineBuilder();
+            Line line = lb.getLine(h0, h0Cal, h1, h1Cal);
 
             /**
              * The value in HOUT represents the independent variable for the above line equation.
@@ -380,13 +370,14 @@ public class SenseHATI2C
             byte hOutLow = humI2C.readRegisterByte(0x28);
 
             short hOut = (short)(((hOutHigh &  0xFF) << 8) | (hOutLow & 0xFF));
+            double hOutDouble = (double)hOut;
 
             /**
              * Now that we have the equation for our line, and the independent
              * variable represented by tOut, we can calculate our relative humidity
              * (percent)
              */
-            humidity = (slope * hOut) + b;
+            humidity = line.findYGivenX(hOutDouble);
 
         } catch (Exception e){
             System.out.println(e);
