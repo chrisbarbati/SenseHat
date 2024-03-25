@@ -84,6 +84,12 @@ Expanded documentation is coming soon. For now, the included functions are as fo
  - getPressure(PressureUnits unit)
  - getHumidity() - Returns the current relative humidity percentage as a double value.
 
+## Testing
+
+If you intend to use unit testing in your project (and you should), please note that unit tests on any of your methods that cause this library to call the I2C bus will always fail if you are not developing on actual hardware. For example, calling getTempFromPressure() in a test run on a Windows machine will always fail as the Windows machine does not have an I2C bus. This does not mean that your application won't work, simply that you will need to test it on an actual Raspberry Pi.
+
+I highly recommend using remote development if possible, as compiling the application and running tests on the Raspberry Pi itself should allow you to test thoroughly without encountering this issue.
+
 ## Acknowledgments
 
 This project includes some logic and inspiration from the [RTIMULib project](https://github.com/RPi-Distro/RTIMULib/) for handling sensor data.
