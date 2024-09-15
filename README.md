@@ -15,6 +15,10 @@ For a real-world example, check out my [Spring Boot Weather API](https://github.
   (Support for the LSM9DS1 accelerometer / magnetometer and LED2472G is planned and will be added in the near future.)
 - **Simplified Development Experience**: Saves time and effort by handling low-level I2C interactions, allowing developers to focus on application logic.
 
+## Changelog
+- **1.0**: Initial release, includes support for the LPS25H pressure sensor and HTS221 humidity sensor.
+- **1.1**: Fix bug in 1.0 that caused memory leaks when reading sensor data.
+
 ## Getting Started
 
 ### Prerequisites
