@@ -45,9 +45,7 @@ public class SenseHAT
     public synchronized double getTempFromPressure(TempUnits units){
         double temperature = 0;
 
-        I2C tempI2C = getI2C("TEMPFROMPRESSURE", LPS25H_ADDRESS);
-
-        try  {
+        try (I2C tempI2C = getI2C("TEMPFROMPRESSURE", LPS25H_ADDRESS)) {
 
             if(!initializeLPS25H(tempI2C)){
                 //Add proper exception-handling here later
@@ -165,14 +163,12 @@ public class SenseHAT
     public synchronized double getPressure(PressureUnits units){
         double pressure = 0;
 
-        I2C pressureI2C = getI2C("PRESSURE", LPS25H_ADDRESS);
+        try (I2C pressureI2C = getI2C("PRESSURE", LPS25H_ADDRESS)) {
 
-        if(!initializeLPS25H(pressureI2C)){
-            //Add proper exception-handling here later
-            System.out.println("Error initializing LPS25H");
-        }
-
-        try  {
+            if(!initializeLPS25H(pressureI2C)){
+                //Add proper exception-handling here later
+                System.out.println("Error initializing LPS25H");
+            }
 
             int pressureH = pressureI2C.readRegister(LPS25H_PRESS_OUT_H_REGISTER);
             int pressureL = pressureI2C.readRegister(LPS25H_PRESS_OUT_L_REGISTER);
@@ -214,9 +210,8 @@ public class SenseHAT
      */
     public synchronized double getTempFromHumidity(TempUnits units){
         double temp = 0;
-        I2C humidityI2C = getI2C("TEMPFROMHUMIDITY", HTS221_ADDRESS);
 
-        try  {
+        try (I2C humidityI2C = getI2C("TEMPFROMHUMIDITY", HTS221_ADDRESS)) {
 
             //Initialize HTS221
             if(!initializeHTS221(humidityI2C)){
@@ -319,9 +314,8 @@ public class SenseHAT
      */
     public synchronized double getHumidity(){
         double humidity = 0;
-        I2C humI2C = getI2C("HUMIDITY", HTS221_ADDRESS);
 
-        try  {
+        try (I2C humI2C = getI2C("HUMIDITY", HTS221_ADDRESS)) {
 
             //Initialization
             //Set power status to on, BDU to non-continuous mode
